@@ -81,7 +81,7 @@ uv run midasdata generate --count 100 --seed 42 --out runs/generated --resume
 uv run midasdata expand --input runs/generated/data.jsonl --out runs/expanded --resume
 ```
 
-The fingerprint includes the request, sampler, configuration, software version, prompt versions and file content digest, and SFT template version. For expansion, the request includes both the resolved input path and its content digest. Only `concurrency` and `preview_page_size` are excluded from the configuration fingerprint; other settings, including timeout and retry delays, must match. API key values are not included, so rotating a key without changing its configured variable name does not change the fingerprint. Changed versions or contracts require a new run; old artifacts are not supported.
+The fingerprint includes the request, sampler, configuration, software version, prompt versions and file content digest, and SFT template version. For expansion, the request includes both the resolved input path and its content digest. Only `concurrency` and `preview_page_size` are excluded from the configuration fingerprint; other settings, including timeout and retry delays, must match. API key values are not included, so rotating a key without changing its configured variable name does not change the fingerprint. Resume requires a matching fingerprint and valid current-format artifacts; a mismatch requires a new run.
 
 Committed passed and rejected samples are skipped. Uncommitted samples replay from the graph entry point, reuse saved successful responses, and retain their technical and generation budgets. Requests whose outcomes are unknown still consume technical attempts. Terminal rejections never receive a fresh budget on resume.
 
@@ -102,7 +102,7 @@ uv run --locked python -m unittest discover -s tests -v
 uv run --locked ruff check .
 ```
 
-Tests cover configuration isolation, five-dimensional sampling, language conditions, data contracts, PIU evidence, termination rules, draft state, and recovery. Test inputs and call histories are created from current contracts in temporary directories; tests require no saved runs, historical fixtures, or remote model requests. Model-quality evaluations require actual service runs and human review of both accepted and rejected samples.
+Tests cover configuration isolation, five-dimensional sampling, language conditions, data contracts, PIU evidence, termination rules, draft state, and recovery. Test inputs and call events are created from current contracts in temporary directories; tests are self-contained and require no remote model requests. Model-quality evaluations require actual service runs and human review of both accepted and rejected samples.
 
 The source tree contains one implementation of the current contracts. Default sampling data is packaged with the module, so installed commands do not need files from this checkout. New runs use only their explicit inputs and configuration; `--resume` reads only the selected run directory.
 

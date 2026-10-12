@@ -59,7 +59,7 @@ Single-level and group revisions share a maximum of three generations per level.
 
 Attempt limits live in `limits.py`: three generations and five technical attempts, including the first attempt. LangChain `Runnable.with_retry` provides the single technical retry boundary; the SDK uses `max_retries=0`. Requests, response parsing, schema checks, and stage-specific parsing callbacks share that boundary. Backoff is exponential with jitter, bounded by `retry_initial` and `retry_max`; waiting does not hold a request semaphore slot.
 
-`ModelCaller` owns separate generation and validation `ChatOpenAI` instances. `call` restores history, checks the remaining budget, and then invokes the retry wrapper. `_restore_history` reuses saved results and restores request counts. `_request_once` performs one request, response parsing, and audit writes. Native mode uses `with_structured_output`; both fresh and restored responses pass through `parse_response` and the same callbacks.
+`ModelCaller` owns separate generation and validation `ChatOpenAI` instances. `call` recovers the selected run's logical call, checks the remaining budget, and then invokes the retry wrapper. `_restore_call` reuses that call's saved response and restores its attempt count. `_request_once` performs one request, response parsing, and audit writes. Native mode uses `with_structured_output`; both fresh and restored responses pass through `parse_response` and the same callbacks.
 
 Source and single-level English quality decisions are computed after response parsing. Group assessment runs in the parsing callback so structural and revision-contract errors can retry the validator call; the callback's decision is reused for audit and routing.
 

@@ -40,7 +40,7 @@ def source_decision(result: SourceValidation, sample: dict, prompt: str) -> Deci
 
 
 def _distinct(facts: list[str]) -> bool:
-    normalized = [re.sub(r"\W+", "", fact.casefold()) for fact in facts]
+    normalized = [re.sub(r"[\W_]+", "", fact.casefold()) for fact in facts]
     return len(set(normalized)) == len(normalized)
 
 

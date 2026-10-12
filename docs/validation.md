@@ -42,7 +42,7 @@ The program requires:
 - Distinct added facts, locatable output evidence, and `relevant`, `novel`, and `visual` all true for every addition.
 - The number of valid additions to fall within the current level's interval.
 
-Fact distinctness is checked within each PIU list after case folding and punctuation removal. Evidence location is case-sensitive. Fact/evidence correspondence and novelty relative to the source still depend on the model's judgments. An unsupported claim of success cannot override failed evidence checks.
+Fact distinctness is checked within each PIU list after case folding and removal of whitespace and punctuation, including underscores: `orange fur`, `orange-fur`, and `ORANGE_FUR` count as the same fact. Evidence location is case-sensitive. Fact/evidence correspondence and novelty relative to the source still depend on the model's judgments. An unsupported claim of success cannot override failed evidence checks.
 
 A Light prompt with an empty added-PIU list may pass even if the model sets `meaningful_addition=false` to mean that nothing was added. All other semantic, format, evidence, and zero-addition checks still apply.
 

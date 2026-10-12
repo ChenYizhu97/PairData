@@ -174,18 +174,22 @@ def load_config(path: Path | None, overrides: dict, env_file: Path = Path(".env"
         with path.open("rb") as handle:
             loaded = tomllib.load(handle)
         for key, value in loaded.items():
-            data[key] = {**data[key], **value} if key in {"generator", "validator"} else value
+            if key in {"generator", "validator"}:
+                if not isinstance(value, dict):
+                    raise ConfigurationError(f"{key} must be a TOML table")
+                data[key].update(value)
+            else:
+                data[key] = value
     for key, value in overrides.items():
         if value is None:
             continue
         if key in {"model", "validator_model", "base_url", "structured_output"}:
-            targets = (
-                ("validator",)
-                if key == "validator_model"
-                else ("generator",)
-                if key == "model"
-                else ("generator", "validator")
-            )
+            if key == "model":
+                targets = ("generator",)
+            elif key == "validator_model":
+                targets = ("validator",)
+            else:
+                targets = ("generator", "validator")
             field = "model" if key in {"model", "validator_model"} else key
             for target in targets:
                 data[target][field] = value

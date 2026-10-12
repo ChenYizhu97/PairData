@@ -127,7 +127,7 @@ class ModelCaller:
             prompt_version=VERSIONS[stage],
             model=settings.model,
         )
-        restored, attempts = self._restore_history(
+        restored, attempts = self._restore_call(
             self.store.calls[logical_id], payload_hash, schema, check, meta
         )
         if restored is not None:
@@ -160,16 +160,17 @@ class ModelCaller:
         except RetryableError as exc:
             raise TechnicalFailure(f"{stage}: {exc}") from None
 
-    def _restore_history(
+    def _restore_call(
         self,
-        previous: list[dict],
+        events: list[dict],
         payload_hash: str,
         schema: type[Response],
         check: Callable[[Response], object] | None,
         meta: dict,
     ) -> tuple[Response | None, int]:
+        """Recover this logical call's response and attempt count within the selected run."""
         attempts = 0
-        for event in previous:
+        for event in events:
             if event["event"] == "request":
                 if event["data"]["payload_hash"] != payload_hash:
                     raise ConfigurationError("replayed call inputs differ from saved inputs")
@@ -177,7 +178,7 @@ class ModelCaller:
             if event["event"] == "success":
                 return parse_response(event["data"], schema, check), attempts
         # A crash between response and success must not lose a valid saved response.
-        for event in reversed(previous):
+        for event in reversed(events):
             if event["event"] != "response":
                 continue
             try:

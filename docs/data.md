@@ -63,6 +63,6 @@ Each entry in `ExpandDetails.levels` is a `LevelResult` with level, round, gener
 
 Records and details from the wrong workflow and unknown nested fields are rejected. `source` allows extensible provenance metadata. Storage, export, and the review script read typed models; preview generation serializes them to embedded JSON.
 
-Optional detail fields are fully serialized with their defaults, including `null` for absent validation and decisions. Dropped dimensions are omitted only from business records' `sample`. The decision's `insufficient_expansion_space` flag is saved together with the original validation and rejection reason. Current contracts define the artifacts; there is no compatibility serializer for older formats.
+Optional detail fields are fully serialized with their defaults, including `null` for absent validation and decisions. Dropped dimensions are omitted only from business records' `sample`. The decision's `insufficient_expansion_space` flag is saved together with the original validation and rejection reason. Artifacts are read and written using the current contracts in `schemas.py`.
 
 When a new draft replaces old text, its current validation and decision are cleared until that draft is validated. Previous evidence remains in `audit.jsonl`. Entering a new expansion round also clears the previous group validation and decision, while carrying revision feedback to the requested levels.

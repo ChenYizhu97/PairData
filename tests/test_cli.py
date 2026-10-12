@@ -1,5 +1,6 @@
 """Generate, expand, export, preview, and resume with a controlled model transport."""
 
+import asyncio
 import json
 import os
 import re
@@ -19,6 +20,66 @@ from tests.support import OUTPUTS, SOURCE, english_validation, expansion_case, s
 
 
 class CliTest(unittest.IsolatedAsyncioTestCase):
+    async def test_interrupted_level_revision_reuses_calls_and_preserves_budgets(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {}, clear=True):
+            root = Path(directory)
+            env = root / "settings.env"
+            env.write_text("model=test-model\napi_key=test-secret\n")
+            config = load_config(None, {"retry_initial": 0.0, "retry_max": 0.0}, env)
+            source = root / "input.jsonl"
+            source.write_text(json.dumps({"id": "sample", "prompt": SOURCE}) + "\n")
+            args = parser().parse_args(
+                ["expand", "--input", str(source), "--out", str(root / "run")]
+            )
+            medium_generations = 0
+            revision_started = asyncio.Event()
+
+            async def response(inputs):
+                nonlocal medium_generations
+                schema = json.loads(inputs[0]["content"].rsplit("formatting:\n", 1)[1])
+                payload = json.loads(inputs[1]["content"])
+                if schema["title"] == "EnglishDraft":
+                    if payload["level"] == "medium":
+                        medium_generations += 1
+                        if medium_generations == 2:
+                            revision_started.set()
+                            await asyncio.Future()
+                    value = {"prompt": OUTPUTS[payload["level"]]}
+                elif schema["title"] == "EnglishValidation":
+                    value = english_validation(payload["level"])
+                    if payload["level"] == "medium" and medium_generations == 1:
+                        value["missing_pius"] = ["cat"]
+                        value["feedback"] = "Preserve the cat."
+                elif schema["title"] == "GroupValidation":
+                    value = expansion_case()["validation"]
+                else:
+                    raise AssertionError(schema["title"])
+                return AIMessage(content=json.dumps(value))
+
+            with patch("midasdata.llm.ChatOpenAI") as factory:
+                factory.return_value.ainvoke = AsyncMock(side_effect=response)
+                running = asyncio.create_task(execute(args, config))
+                try:
+                    await asyncio.wait_for(revision_started.wait(), timeout=5)
+                finally:
+                    running.cancel()
+                    with self.assertRaises(asyncio.CancelledError):
+                        await running
+                manifest = json.loads((args.out / "manifest.json").read_text())
+                self.assertEqual(manifest["status"], "interrupted")
+                self.assertEqual(manifest["statistics"]["pending"], 1)
+
+                args.resume = True
+                factory.return_value.ainvoke.reset_mock()
+                statistics = await execute(args, config)
+                self.assertEqual(factory.return_value.ainvoke.await_count, 3)
+                self.assertEqual(statistics["passed"], 1)
+                self.assertEqual(statistics["requests"], 10)
+                self.assertEqual(statistics["logical_generations"], 4)
+                self.assertEqual(statistics["quality_retries"], 1)
+                self.assertEqual(statistics["technical_retries"], 1)
+                self.assertEqual(len(list(read_jsonl(args.out / "sft.jsonl"))), 3)
+
     async def test_fresh_generate_expand_and_resume(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {}, clear=True):
             root = Path(directory)

@@ -206,6 +206,16 @@ class ContractsTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             ModelConfig(base_url="ftp://example.com")
 
+    def test_model_configuration_requires_a_toml_table(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.toml"
+            for role in ("generator", "validator"):
+                for value in ('"model-name"', '[]', '42'):
+                    with self.subTest(role=role, value=value):
+                        path.write_text(f"{role} = {value}\n")
+                        with self.assertRaisesRegex(ConfigurationError, f"{role}.*TOML table"):
+                            load_config(path, {}, Path(directory) / "missing.env")
+
     def test_config_loads_are_independent_and_do_not_modify_the_process(self):
         with tempfile.TemporaryDirectory() as directory, isolated_environment():
             first_env, second_env = (Path(directory) / name for name in ("first.env", "second.env"))
@@ -429,12 +439,14 @@ class ContractsTest(unittest.TestCase):
             **copy.deepcopy(self.group["validation"]["levels"]["rich"]),
             "original_pius": self.group["validation"]["original_pius"],
         }
-        raw["added_pius"][1]["fact"] = raw["added_pius"][0]["fact"]
-        self.assertFalse(
-            english_decision(
-                EnglishValidation.model_validate(raw), source, output, "rich", self.config.piu
-            ).passed
-        )
+        for duplicate in ("ORANGE FUR", "orange-fur", "orange_fur"):
+            with self.subTest(duplicate=duplicate):
+                raw["added_pius"][0]["fact"] = "orange fur"
+                raw["added_pius"][1]["fact"] = duplicate
+                decision = english_decision(
+                    EnglishValidation.model_validate(raw), source, output, "rich", self.config.piu
+                )
+                self.assertIn("invalid_added_evidence", decision.reasons)
         raw = {
             **copy.deepcopy(self.group["validation"]["levels"]["rich"]),
             "original_pius": self.group["validation"]["original_pius"],
