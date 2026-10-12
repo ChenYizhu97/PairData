@@ -1,0 +1,127 @@
+{
+  "domain": [
+    [
+      "people",
+      "People and fictional characters",
+      0.20
+    ],
+    [
+      "animals",
+      "Animals and fictional creatures",
+      0.15
+    ],
+    [
+      "objects",
+      "Everyday objects, tools, and consumer products",
+      0.15
+    ],
+    [
+      "scenes",
+      "Natural, architectural, indoor, and outdoor environments",
+      0.15
+    ],
+    [
+      "plants_food",
+      "Plants, flowers, and food",
+      0.10
+    ],
+    [
+      "vehicles",
+      "Vehicles, machines, and fictional technology",
+      0.10
+    ],
+    [
+      "art_design",
+      "Illustrations, icons, posters, and other designed visual assets",
+      0.10
+    ],
+    [
+      "cultural_abstract",
+      "Cultural symbols, visual motifs, and abstract concepts",
+      0.05
+    ]
+  ],
+  "focus": [
+    [
+      "subject",
+      "The identity or appearance of the main subject",
+      0.20
+    ],
+    [
+      "action",
+      "An action, activity, or event",
+      0.20
+    ],
+    [
+      "scene",
+      "The surrounding setting or environment",
+      0.15
+    ],
+    [
+      "relation",
+      "Spatial or interactive relationships between multiple entities",
+      0.15
+    ],
+    [
+      "composition",
+      "Visual composition, framing, or viewpoint",
+      0.15
+    ],
+    [
+      "aesthetic",
+      "Visual style, mood, or atmosphere",
+      0.15
+    ]
+  ],
+  "specificity": [
+    [
+      "minimal",
+      "One main visual idea with little or no additional detail",
+      0.30
+    ],
+    [
+      "moderate",
+      "A main subject or scene with a few explicitly specified details",
+      0.45
+    ],
+    [
+      "detailed",
+      "Multiple explicitly specified attributes, relationships, or visual constraints, but remaining a typical user input, not an exhaustive generated caption",
+      0.25
+    ]
+  ],
+  "expression": [
+    [
+      "keywords",
+      "A list of keywords or short phrases",
+      0.35
+    ],
+    [
+      "natural",
+      "Neutral, naturally phrased descriptive sentences",
+      0.40
+    ],
+    [
+      "colloquial",
+      "Casual, informal, or request-style language (e.g., 'Can you draw a...', 'I want to see a...')",
+      0.25
+    ]
+  ],
+  "language": [
+    [
+      "zh",
+      "User descriptions written primarily in Chinese",
+      0.75
+    ],
+    [
+      "en",
+      "User descriptions written entirely in English",
+      0.15
+    ],
+    [
+      "mixed",
+      "Predominantly Chinese descriptions containing occasional English words, phrases, or visual terms",
+      0.10
+    ]
+  ]
+}

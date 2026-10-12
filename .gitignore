@@ -1,0 +1,46 @@
+# Local environment and configuration; keep config.example.toml in version control
+.env
+.venv/
+config.toml
+
+# Python bytecode, tool caches, and test reports
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build and packaging artifacts
+build/
+dist/
+*.egg-info/
+
+# Default run directory
+runs/
+
+# Run artifacts in custom --out directories; keep other JSON/JSONL files eligible for version control
+data.jsonl
+sft.jsonl
+tasks.jsonl
+audit.jsonl
+rejected.jsonl
+lineage.jsonl
+manifest.json
+sources.json
+run.lock
+results/
+preview.html
+preview/
+*-review.csv
+
+# Temporary files and run logs, including .tmp files left by atomic writes
+*.tmp
+*.temp
+*.log
+tmp/
+temp/
+logs/
+

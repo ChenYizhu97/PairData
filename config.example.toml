@@ -1,0 +1,38 @@
+# Copy to config.toml. CLI options override values below.
+concurrency = 4
+timeout = 120.0
+preview_page_size = 100
+retry_initial = 1.0
+retry_max = 30.0
+
+[generator]
+# A field containing ${ENV_NAME} resolves from .env / the environment.
+model = "${MODEL_NAME}"
+base_url = "${OPENAI_BASE_URL}"
+api_key_env = "OPENAI_API_KEY"
+structured_output = "json" # "native" uses JSON Schema; "json" parses model text
+temperature = 0.8
+# DeepSeek defaults to thinking disabled for both generation and validation.
+# To enable it explicitly, set thinking.type = "enabled" and optionally:
+# reasoning_effort = "low"
+# [generator.extra_body.thinking]
+# type = "disabled"
+
+[validator]
+model = "${MODEL_NAME}"
+base_url = "${OPENAI_BASE_URL}"
+api_key_env = "OPENAI_API_KEY"
+structured_output = "json"
+temperature = 0.0
+# [validator.extra_body.thinking]
+# type = "disabled" # Set "enabled" to explicitly opt in to thinking.
+
+[piu.light]
+min = 0
+max = 0
+[piu.medium]
+min = 2
+max = 4
+[piu.rich]
+min = 5
+max = 8
