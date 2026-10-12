@@ -16,69 +16,222 @@ TEMPLATE = r"""<!doctype html>
   <title>MidasData · __TITLE__</title>
   <style>
     :root {
-      font-family: system-ui, sans-serif;
-      color: #263444;
-      background: #f2f5f9;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --focus-ring: rgba(59, 130, 246, 0.25);
+      --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
+    
     body {
-      max-width: 1500px;
-      margin: 32px auto;
-      padding: 0 24px;
+      font-family: var(--font-sans);
+      color: var(--text-main);
+      background: var(--bg-color);
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      line-height: 1.6;
     }
-    h1 { font-size: 26px; }
-    a { color: #2767a4; }
-    nav { margin: 16px 0; }
-    input, select {
-      font: inherit;
-      padding: 8px;
-      border: 1px solid #b7c7d9;
-      border-radius: 6px;
-      margin: 4px;
-      max-width: 95%;
+    
+    h1 { 
+      font-size: 28px; 
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      margin-bottom: 8px;
     }
+    
+    p.meta {
+      margin-top: 0;
+      margin-bottom: 24px;
+    }
+    
+    a { 
+      color: var(--primary); 
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    
+    a:hover { 
+      color: var(--primary-hover); 
+      text-decoration: underline;
+    }
+    
+    nav { 
+      margin: 16px 0 24px 0; 
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    nav a { margin-right: 12px; }
+    
     .toolbar {
-      padding: 12px;
-      background: white;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
     }
+    
+    input, select {
+      font-family: inherit;
+      font-size: 14px;
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background-color: #fff;
+      color: var(--text-main);
+      transition: all 0.2s;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+    
+    input#search { 
+      flex: 1; 
+      min-width: 240px; 
+    }
+    
+    #dimensions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    
+    #count {
+      margin-left: auto;
+      font-weight: 500;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
     article {
-      background: white;
-      border: 1px solid #dbe4ef;
-      border-radius: 12px;
-      padding: 20px;
-      margin: 16px 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      margin: 20px 0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      transition: box-shadow 0.2s, transform 0.2s;
     }
+    
+    article:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    }
+    
+    article h2 {
+      margin-top: 0;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+    }
+    
     .badge {
-      font-size: 13px;
-      background: #e5f3eb;
-      border-radius: 4px;
-      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #dcfce7;
+      color: #166534;
+      border-radius: 9999px;
+      padding: 4px 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
     }
-    .rejected { background: #ffe8e6; }
-    .meta { color: #62738a; font-size: 14px; }
+    
+    .rejected { 
+      background: #fee2e2; 
+      color: #991b1b; 
+    }
+    
+    .meta { 
+      color: var(--text-muted); 
+      font-size: 14px; 
+    }
+    
     .columns {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 20px;
+      margin-top: 20px;
     }
+    
+    .columns section {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    
     .text {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
       line-height: 1.6;
+      font-size: 15px;
+      color: #334155;
     }
+    
+    h3 { 
+      font-size: 13px; 
+      color: var(--text-muted); 
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+    
+    summary { 
+      cursor: pointer; 
+      margin-top: 20px;
+      font-weight: 500;
+      color: var(--primary);
+      user-select: none;
+      display: inline-block;
+      transition: color 0.2s;
+    }
+    
+    summary:hover { color: var(--primary-hover); }
+    
     pre {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
-      background: #f5f7fa;
+      background: #1e293b;
+      color: #f8fafc;
       padding: 16px;
-      font-size: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 12px;
     }
-    summary { cursor: pointer; margin-top: 16px; }
-    h3 { font-size: 15px; color: #365679; }
-    .empty { color: #8090a3; }
-    @media (max-width: 800px) {
+    
+    .empty { 
+      color: var(--text-muted); 
+      text-align: center;
+      padding: 48px;
+      font-style: italic;
+    }
+    
+    @media (max-width: 900px) {
       .columns { grid-template-columns: 1fr; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      input#search { min-width: 100%; }
+      #count { margin-left: 0; text-align: right; }
     }
   </style>
 </head>
@@ -211,8 +364,7 @@ TEMPLATE = r"""<!doctype html>
 
     function render() {
       const filtered = filteredRows();
-      $('rows').replaceChildren();
-      $('count').textContent = `显示 ${filtered.length} / ${rows.length}`;
+      $('rows').replaceChildren();$('count').textContent = `显示 ${filtered.length} / ${rows.length}`;
       for (const row of filtered) $('rows').appendChild(renderCard(row));
       if (!filtered.length) {
         $('rows').appendChild(element('p', '当前页没有匹配样本。', 'empty'));
