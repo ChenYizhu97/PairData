@@ -1,0 +1,100 @@
+{"id": "gen:1269bf1d855f:000020", "sample": {"domain": "people", "expression": "keywords", "focus": "action", "language": "en", "specificity": "moderate"}}
+{"id": "gen:298e12a82439:000002", "sample": {"domain": "vehicles", "expression": "keywords", "language": "mixed", "specificity": "moderate"}}
+{"id": "gen:1269bf1d855f:000027", "sample": {"domain": "objects", "expression": "colloquial", "focus": "aesthetic", "language": "en", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000034", "sample": {"domain": "scenes", "expression": "colloquial", "focus": "aesthetic", "language": "en", "specificity": "minimal"}}
+{"id": "gen:015a812aa9f8:000007", "sample": {"domain": "people", "expression": "keywords", "focus": "composition", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:3628515804c0:000058", "sample": {"domain": "scenes", "expression": "keywords", "focus": "action", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:015a812aa9f8:000005", "sample": {"domain": "objects", "expression": "natural", "focus": "action", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000047", "sample": {"domain": "vehicles", "expression": "colloquial", "focus": "scene", "language": "mixed", "specificity": "minimal"}}
+{"id": "gen:3628515804c0:000026", "sample": {"domain": "people", "expression": "natural", "focus": "subject", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:1269bf1d855f:000006", "sample": {"domain": "scenes", "expression": "keywords", "focus": "scene", "language": "en", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000006", "sample": {"domain": "scenes", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:3628515804c0:000040", "sample": {"domain": "objects", "expression": "colloquial", "focus": "aesthetic", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:564490aa2b94:000006", "sample": {"domain": "objects", "expression": "keywords", "focus": "relation", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:298e12a82439:000072", "sample": {"domain": "animals", "expression": "keywords", "focus": "action", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:298e12a82439:000044", "sample": {"expression": "keywords", "focus": "aesthetic", "specificity": "minimal"}}
+{"id": "gen:3628515804c0:000035", "sample": {"domain": "scenes", "focus": "aesthetic", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000086", "sample": {"focus": "subject", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:1269bf1d855f:000018", "sample": {"domain": "vehicles", "expression": "colloquial", "focus": "composition", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000091", "sample": {"domain": "art_design", "expression": "colloquial", "focus": "scene", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000048", "sample": {"domain": "people", "expression": "natural", "focus": "scene", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:1269bf1d855f:000031", "sample": {"domain": "objects", "expression": "natural", "focus": "subject", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000050", "sample": {"domain": "cultural_abstract", "expression": "natural", "focus": "aesthetic", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:6b989c24b7c5:000007", "sample": {"domain": "people", "expression": "natural", "focus": "subject", "language": "en", "specificity": "moderate"}}
+{"id": "gen:015a812aa9f8:000001", "sample": {"domain": "objects", "expression": "natural", "focus": "composition", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000039", "sample": {"domain": "vehicles", "focus": "action", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:564490aa2b94:000011", "sample": {"domain": "animals", "focus": "scene", "language": "mixed", "specificity": "moderate"}}
+{"id": "gen:564490aa2b94:000005", "sample": {"domain": "people", "expression": "natural", "focus": "composition", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000061", "sample": {"domain": "cultural_abstract", "expression": "keywords", "focus": "aesthetic", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:6b989c24b7c5:000047", "sample": {"domain": "vehicles", "expression": "natural", "focus": "aesthetic", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000016", "sample": {"domain": "animals", "expression": "natural", "focus": "aesthetic", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:3628515804c0:000087", "sample": {"domain": "people", "expression": "natural", "focus": "composition", "language": "en", "specificity": "moderate"}}
+{"id": "gen:298e12a82439:000078", "sample": {"domain": "animals", "expression": "natural", "focus": "scene", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:298e12a82439:000093", "sample": {"domain": "people", "focus": "composition", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:1269bf1d855f:000001", "sample": {"domain": "objects", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:6b989c24b7c5:000044", "sample": {"domain": "vehicles", "focus": "relation", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:1269bf1d855f:000016", "sample": {"domain": "people", "expression": "natural", "focus": "relation", "language": "zh"}}
+{"id": "gen:015a812aa9f8:000017", "sample": {"domain": "vehicles", "expression": "natural", "focus": "subject", "language": "mixed", "specificity": "minimal"}}
+{"id": "gen:564490aa2b94:000004", "sample": {"domain": "objects", "focus": "subject", "language": "en", "specificity": "minimal"}}
+{"id": "gen:3628515804c0:000076", "sample": {"domain": "art_design", "expression": "natural", "focus": "subject", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:237e771b23ae:000006", "sample": {"domain": "vehicles", "expression": "natural", "focus": "subject", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000069", "sample": {"domain": "vehicles", "expression": "natural", "focus": "relation", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:6b989c24b7c5:000002", "sample": {"domain": "scenes", "expression": "keywords", "language": "en", "specificity": "moderate"}}
+{"id": "gen:eb35d56fe057:000024", "sample": {"domain": "scenes", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:015a812aa9f8:000021", "sample": {"expression": "natural", "focus": "action", "specificity": "minimal"}}
+{"id": "gen:3628515804c0:000056", "sample": {"domain": "vehicles", "expression": "natural", "focus": "action", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000053", "sample": {"domain": "animals", "expression": "natural", "language": "en", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000023", "sample": {"domain": "objects", "expression": "keywords", "focus": "subject", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:564490aa2b94:000010", "sample": {"domain": "vehicles", "expression": "colloquial", "focus": "aesthetic", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:015a812aa9f8:000041", "sample": {"focus": "relation", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:298e12a82439:000066", "sample": {"domain": "cultural_abstract", "expression": "colloquial", "focus": "action", "language": "mixed", "specificity": "moderate"}}
+{"id": "gen:eb35d56fe057:000017", "sample": {"domain": "animals", "expression": "natural", "focus": "aesthetic", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:1269bf1d855f:000010", "sample": {"domain": "vehicles", "expression": "keywords", "focus": "subject", "language": "en", "specificity": "minimal"}}
+{"id": "gen:015a812aa9f8:000011", "sample": {"domain": "scenes", "expression": "keywords", "focus": "composition", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000036", "sample": {"domain": "art_design", "expression": "keywords", "focus": "action", "language": "zh"}}
+{"id": "gen:3628515804c0:000064", "sample": {"domain": "scenes", "expression": "natural", "focus": "composition", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:3628515804c0:000070", "sample": {"domain": "plants_food", "expression": "colloquial", "focus": "aesthetic", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000089", "sample": {"domain": "animals", "expression": "colloquial", "focus": "subject", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:298e12a82439:000054", "sample": {"domain": "art_design", "focus": "scene", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:3628515804c0:000065", "sample": {"domain": "cultural_abstract", "expression": "natural", "focus": "action", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:564490aa2b94:000018", "sample": {"domain": "scenes", "expression": "keywords", "focus": "relation", "specificity": "minimal"}}
+{"id": "gen:eb35d56fe057:000039", "sample": {"domain": "people", "expression": "colloquial", "focus": "subject", "language": "mixed", "specificity": "minimal"}}
+{"id": "gen:015a812aa9f8:000010", "sample": {"domain": "animals", "expression": "keywords", "focus": "composition", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:6b989c24b7c5:000038", "sample": {"domain": "art_design", "expression": "keywords", "focus": "aesthetic", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:298e12a82439:000062", "sample": {"domain": "people", "expression": "keywords", "focus": "action", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:298e12a82439:000033", "sample": {"domain": "vehicles", "focus": "subject", "language": "en"}}
+{"id": "gen:3628515804c0:000006", "sample": {"domain": "people", "expression": "natural", "focus": "composition", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:6b989c24b7c5:000017", "sample": {"domain": "cultural_abstract", "expression": "keywords", "focus": "scene", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:6b989c24b7c5:000030", "sample": {"domain": "people", "expression": "keywords", "focus": "relation", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:298e12a82439:000040", "sample": {"domain": "vehicles", "expression": "colloquial", "focus": "scene", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000004", "sample": {"domain": "plants_food", "expression": "keywords", "focus": "aesthetic", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:1269bf1d855f:000003", "sample": {"domain": "people", "expression": "colloquial", "focus": "composition", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:3628515804c0:000059", "sample": {"domain": "scenes", "expression": "natural", "focus": "action", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000052", "sample": {"domain": "animals", "expression": "keywords", "focus": "scene", "language": "en", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000100", "sample": {"domain": "scenes", "expression": "natural", "focus": "action", "language": "en", "specificity": "minimal"}}
+{"id": "gen:1269bf1d855f:000028", "sample": {"domain": "objects", "expression": "keywords", "focus": "relation", "specificity": "moderate"}}
+{"id": "gen:1269bf1d855f:000046", "sample": {"domain": "vehicles", "expression": "keywords", "focus": "relation", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:1269bf1d855f:000024", "sample": {"expression": "natural", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:6b989c24b7c5:000006", "sample": {"domain": "people", "expression": "keywords", "focus": "relation", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:3628515804c0:000093", "sample": {"domain": "people", "expression": "keywords", "focus": "composition", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:015a812aa9f8:000008", "sample": {"domain": "plants_food", "focus": "subject", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:564490aa2b94:000003", "sample": {"domain": "people", "expression": "colloquial", "specificity": "minimal"}}
+{"id": "gen:3628515804c0:000043", "sample": {"domain": "art_design", "expression": "colloquial", "focus": "action", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000036", "sample": {"domain": "scenes", "expression": "natural", "language": "en"}}
+{"id": "gen:eb35d56fe057:000022", "sample": {"domain": "people", "expression": "colloquial", "focus": "composition", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000004", "sample": {"domain": "vehicles", "focus": "action", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000056", "sample": {"domain": "art_design", "expression": "colloquial", "focus": "composition", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:1269bf1d855f:000014", "sample": {"domain": "animals", "expression": "colloquial", "focus": "subject", "language": "en", "specificity": "minimal"}}
+{"id": "gen:6b989c24b7c5:000014", "sample": {"domain": "vehicles", "expression": "colloquial", "focus": "subject", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000070", "sample": {"domain": "animals", "expression": "keywords", "focus": "relation", "language": "en", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000098", "sample": {"domain": "people", "expression": "natural", "focus": "subject", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000054", "sample": {"domain": "plants_food", "expression": "natural", "focus": "composition", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:298e12a82439:000046", "sample": {"domain": "animals", "focus": "scene", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:1269bf1d855f:000012", "sample": {"domain": "vehicles", "expression": "colloquial", "focus": "action", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:3628515804c0:000038", "sample": {"expression": "natural", "focus": "relation", "language": "zh"}}
+{"id": "gen:298e12a82439:000095", "sample": {"domain": "people", "focus": "action", "specificity": "moderate"}}
+{"id": "gen:298e12a82439:000037", "sample": {"domain": "plants_food", "expression": "colloquial", "language": "mixed", "specificity": "moderate"}}
+{"id": "gen:298e12a82439:000050", "sample": {"domain": "art_design", "focus": "action", "language": "zh"}}
+{"id": "gen:6b989c24b7c5:000025", "sample": {"domain": "scenes", "expression": "natural", "focus": "subject", "language": "zh", "specificity": "minimal"}}
+{"id": "gen:1269bf1d855f:000026", "sample": {"domain": "cultural_abstract", "expression": "keywords", "focus": "relation", "language": "zh", "specificity": "moderate"}}
+{"id": "gen:015a812aa9f8:000013", "sample": {"domain": "vehicles", "focus": "scene", "language": "zh", "specificity": "moderate"}}

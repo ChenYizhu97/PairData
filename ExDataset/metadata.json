@@ -1,0 +1,430 @@
+{
+  "dataset": "ExDataset",
+  "release": "1.0.0",
+  "groups": 150,
+  "expansions": 450,
+  "purpose": "Chinese/English/mixed visual descriptions to Light, Medium and Rich English image prompts.",
+  "midasdata": {
+    "version": "0.1.6",
+    "commit": "25d9ef65b00101ef446060d108046c1f2502d3c5",
+    "tracked_code_clean_at_packaging": true,
+    "prompts_sha256": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4"
+  },
+  "synthesis": {
+    "configurations": {
+      "concurrency-8": {
+        "concurrency": 8,
+        "generator": {
+          "api_key_env": "OPENAI_API_KEY",
+          "base_url": "https://api.deepseek.com",
+          "extra_body": {
+            "thinking": {
+              "type": "disabled"
+            }
+          },
+          "model": "deepseek-flash",
+          "reasoning_effort": null,
+          "structured_output": "json",
+          "temperature": 0.8
+        },
+        "piu": {
+          "light": {
+            "max": 0,
+            "min": 0
+          },
+          "medium": {
+            "max": 4,
+            "min": 2
+          },
+          "rich": {
+            "max": 8,
+            "min": 5
+          }
+        },
+        "preview_page_size": 100,
+        "retry_initial": 1.0,
+        "retry_max": 30.0,
+        "timeout": 120.0,
+        "validator": {
+          "api_key_env": "OPENAI_API_KEY",
+          "base_url": "https://api.deepseek.com",
+          "extra_body": {
+            "thinking": {
+              "type": "disabled"
+            }
+          },
+          "model": "deepseek-flash",
+          "reasoning_effort": null,
+          "structured_output": "json",
+          "temperature": 0.0
+        }
+      },
+      "concurrency-16": {
+        "concurrency": 16,
+        "generator": {
+          "api_key_env": "OPENAI_API_KEY",
+          "base_url": "https://api.deepseek.com",
+          "extra_body": {
+            "thinking": {
+              "type": "disabled"
+            }
+          },
+          "model": "deepseek-flash",
+          "reasoning_effort": null,
+          "structured_output": "json",
+          "temperature": 0.8
+        },
+        "piu": {
+          "light": {
+            "max": 0,
+            "min": 0
+          },
+          "medium": {
+            "max": 4,
+            "min": 2
+          },
+          "rich": {
+            "max": 8,
+            "min": 5
+          }
+        },
+        "preview_page_size": 100,
+        "retry_initial": 1.0,
+        "retry_max": 30.0,
+        "timeout": 120.0,
+        "validator": {
+          "api_key_env": "OPENAI_API_KEY",
+          "base_url": "https://api.deepseek.com",
+          "extra_body": {
+            "thinking": {
+              "type": "disabled"
+            }
+          },
+          "model": "deepseek-flash",
+          "reasoning_effort": null,
+          "structured_output": "json",
+          "temperature": 0.0
+        }
+      }
+    },
+    "sampler": {
+      "domain": [
+        [
+          "people",
+          "People and fictional characters",
+          0.2
+        ],
+        [
+          "animals",
+          "Animals and fictional creatures",
+          0.15
+        ],
+        [
+          "objects",
+          "Everyday objects, tools, and consumer products",
+          0.15
+        ],
+        [
+          "scenes",
+          "Natural, architectural, indoor, and outdoor environments",
+          0.15
+        ],
+        [
+          "plants_food",
+          "Plants, flowers, and food",
+          0.1
+        ],
+        [
+          "vehicles",
+          "Vehicles, machines, and fictional technology",
+          0.1
+        ],
+        [
+          "art_design",
+          "Illustrations, icons, posters, and other designed visual assets",
+          0.1
+        ],
+        [
+          "cultural_abstract",
+          "Cultural symbols, visual motifs, and abstract concepts",
+          0.05
+        ]
+      ],
+      "focus": [
+        [
+          "subject",
+          "The identity or appearance of the main subject",
+          0.2
+        ],
+        [
+          "action",
+          "An action, activity, or event",
+          0.2
+        ],
+        [
+          "scene",
+          "The surrounding setting or environment",
+          0.15
+        ],
+        [
+          "relation",
+          "Spatial or interactive relationships between multiple entities",
+          0.15
+        ],
+        [
+          "composition",
+          "Visual composition, framing, or viewpoint",
+          0.15
+        ],
+        [
+          "aesthetic",
+          "Visual style, mood, or atmosphere",
+          0.15
+        ]
+      ],
+      "specificity": [
+        [
+          "minimal",
+          "A brief visual request centered on one main subject or scene, with few explicitly specified details",
+          0.4
+        ],
+        [
+          "moderate",
+          "A concise visual request with several concrete visual attributes, relationships, or constraints, without exhaustive description",
+          0.6
+        ]
+      ],
+      "expression": [
+        [
+          "keywords",
+          "A list of keywords or short phrases",
+          0.35
+        ],
+        [
+          "natural",
+          "Neutral, naturally phrased descriptive sentences",
+          0.4
+        ],
+        [
+          "colloquial",
+          "Casual, informal, or request-style language (e.g., 'Can you draw a...', 'I want to see a...')",
+          0.25
+        ]
+      ],
+      "language": [
+        [
+          "zh",
+          "User descriptions written primarily in Chinese",
+          0.75
+        ],
+        [
+          "en",
+          "User descriptions written entirely in English",
+          0.15
+        ],
+        [
+          "mixed",
+          "Predominantly Chinese descriptions containing occasional English words, phrases, or visual terms",
+          0.1
+        ]
+      ]
+    },
+    "dimension_dropout": 0.1,
+    "max_generation_attempts": 3,
+    "max_technical_attempts": 5,
+    "system_prompts": {
+      "generate": "Generate realistic user descriptions for image prompt.\nChoose a specific visual concept matching the sampled conditions,\nand return both the concept and the description.\n\nOnly sampled conditions are constraints; omitted dimensions are unrestricted.\nSpecificity controls the amount of explicit visual information, not verbosity.\nKeep descriptions concise and natural, including highly specific ones.\nDo not write exhaustive image captions.\n\nFollow the requested expression style: keywords, natural language,\nor colloquial requests. language=zh means Chinese, language=en means\nEnglish, and language=mixed means primarily Chinese with some English\nvisual terms. Mixed-language English must describe visual content.\n\nFor domain=art_design, explicitly specify a design format such as\nillustration, icon, logo, poster, packaging, or typography.\nA request like \"help me draw\" alone does not establish a design format.\n\nSampling conditions guide generation but must not appear as labels,\nmetadata, or instructions in the description.\nProduce valid visual content without explanations, code, or irrelevant chat.\nOn revision, address the feedback while preserving the intended concept.",
+      "validate_source": "Validate the source image description against its sampled conditions.\nCheck only supplied dimensions; omitted dimensions are unrestricted.\n\nEvaluate condition matching, visual content, and prompt cleanliness.\nSpecificity measures explicitly stated visual information, not raw length.\nKeywords, natural language, colloquial requests, and mixed language\nare all acceptable.\n\nlanguage=zh requires Chinese, language=en requires English, and\nlanguage=mixed requires primarily Chinese with English visual terms.\nEnglish terms must describe visual content, not sampling parameters.\n\nFor domain=art_design, the source must explicitly name a design format\nsuch as illustration, icon, logo, poster, packaging, or typography.\n\"Help me draw\" alone is insufficient.\n\nProvide satisfied and evidence for each sampled dimension.\nEvidence and visual_evidence must each be a short, continuous,\nverbatim substring of the source, preserving case and punctuation.\nNever translate, combine fragments, or include explanations in evidence.\n\nReject non-visual content, gibberish, and unrelated explanations.\nProvide specific, actionable feedback without rewriting the description.",
+      "expand": "Convert the source description into a concise English image-generation\nprompt at the requested expansion level.\n\nPreserve every explicit visual fact, including quantities, negations,\nsubjects, attributes, actions, relationships, styles, and on-image text.\n\nA PIU must represent a complete visual fact that can be traced to the text.\nSpatial relationships require identifiable participants;\nisolated relation words are not independent PIUs.\n\nLight adds 0 PIUs. Medium defaults to 3 new PIUs; Rich defaults to 6.\nFollow the supplied PIU range when different. Internally count\nindependent additions and aim for the middle of the allowed range.\n\nAdded PIUs must be relevant, novel, non-redundant, and visual.\nSynonyms, adjective stacking, and generic quality terms do not count.\nExpress all information concisely without padding or repetition.\n\nExplicit source constraints take priority over expansion targets.\nDo not violate restrictions such as \"only\" or \"do not add\".\n\nIf previous_output and feedback are provided, revise the previous\nversion. When over-expanded, remove only added facts; when\nunder-expanded, add meaningful visual facts without losing the source.\n\nReturn only a JSON object with a prompt field.",
+      "validate_english": "Validate the English prompt against the source and requested level.\nCheck semantic preservation, contradictions, added PIUs, and format.\n\nA PIU must represent a complete visual fact that can be traced to the text.\nSpatial relationships require identifiable participants;\nisolated relation words are not independent PIUs.\nIdentify every original PIU, including\nquantities, negations, subjects, attributes, actions, relationships,\nstyles, and on-image text. All must be preserved.\n\nFor each added PIU, verify relevance, novelty, and visual meaning.\nSynonyms, adjective stacking, and generic quality terms do not count.\n\nEvidence must be a continuous, verbatim substring of the source;\noutput_evidence must be a continuous, verbatim substring of the output.\nPreserve exact case and punctuation. Never translate evidence,\ncombine fragments, or include explanations in evidence fields.\nUse short representative fragments.\n\noriginal_index must start at 0, cover all original PIUs, and contain\nno duplicates. Evaluate actual textual facts, not just verbal claims.\n\nLight must add exactly 0 PIUs; an empty added list is valid and\nmeaningful_addition should be true when no meaningless additions exist.\nMedium and Rich must satisfy their supplied PIU ranges.\n\nIf strict source constraints make the target impossible, mark\ninsufficient_expansion_space. Reject explanations, labels, or code\noutside the English image prompt. Provide actionable feedback.",
+      "validate_group": "Validate the Light, Medium, and Rich prompts together against\nthe same source description.\n\nA PIU must represent a complete visual fact that can be traced to the text.\nSpatial relationships require identifiable participants;\nisolated relation words are not independent PIUs.\nExtract original_pius once at the top level,\nusing consistent segmentation and 0-based indices.\n\nFor each level, independently verify preservation of all original\nPIUs and identify valid added PIUs. Report preserved, added, and\nissues separately.\n\nAdded PIUs must be relevant, novel, non-redundant, and visual.\nSynonyms, adjective stacking, and generic quality terms do not count.\nAdded PIU counts must strictly increase from Light to Medium to Rich,\nwith every level satisfying its own supplied range.\n\nEvidence must be a continuous, verbatim substring of the source;\noutput_evidence must be a continuous, verbatim substring of the\ncorresponding output. Preserve exact case and punctuation.\nDo not translate or combine evidence fragments.\noriginal_index must cover all original PIUs without duplicates.\n\nLevels are independent: added details may differ or conflict\nacross levels, provided each remains consistent with the source.\nHigher levels need not include lower-level additions.\nDo not judge expansion by word count.\n\nLight may have no additions; this is valid, and meaningful_addition\nshould be true when no meaningless additions exist.\nMark insufficient_expansion_space when source constraints prevent\nthe required additions.\n\nIf validation fails, retry_levels must contain every problematic\nlevel; otherwise it must be empty. Provide specific, actionable\nfeedback without generating replacement prompts."
+    },
+    "sft_system": "Translate and expand source image descriptions into English image-generation prompts according to the specified expansion level, while strictly preserving the original semantics.",
+    "batches": {
+      "prompts-50-20261013": {
+        "concurrency": [
+          8
+        ],
+        "source_generation_seeds": [
+          42,
+          43,
+          44,
+          45,
+          46
+        ]
+      },
+      "prompts-100-20261013": {
+        "concurrency": [
+          16
+        ],
+        "source_generation_seeds": [
+          142,
+          143,
+          144
+        ]
+      }
+    }
+  },
+  "split": {
+    "unit": "normalized source text",
+    "normalization": "Unicode NFKC, strip, collapse whitespace, casefold",
+    "seed": 20261013,
+    "stratification": "sample.domain, with omitted values in (dropout)",
+    "allocation": "Hamilton largest remainder: allocate 100 train groups across domain strata, then 20 valid groups across the remaining 50; test receives the final 30.",
+    "ordering": "SHA-256(f'{seed}|{scope}|{value}'); scopes train-quota/valid-quota use domain, within-domain/output-<split> use normalized-source SHA-256.",
+    "counts": {
+      "train": {
+        "sources": 100,
+        "expanded_records": 300,
+        "sft_records": 300
+      },
+      "valid": {
+        "sources": 20,
+        "expanded_records": 60,
+        "sft_records": 60
+      },
+      "test": {
+        "sources": 30,
+        "expanded_records": 90,
+        "sft_records": 90
+      }
+    }
+  },
+  "distributions": {
+    "train": {
+      "domain": {
+        "people": 20,
+        "vehicles": 19,
+        "objects": 10,
+        "scenes": 14,
+        "animals": 12,
+        "(dropout)": 6,
+        "art_design": 8,
+        "cultural_abstract": 6,
+        "plants_food": 5
+      },
+      "focus": {
+        "action": 18,
+        "(dropout)": 10,
+        "aesthetic": 14,
+        "composition": 15,
+        "scene": 12,
+        "subject": 18,
+        "relation": 13
+      },
+      "specificity": {
+        "moderate": 44,
+        "minimal": 50,
+        "(dropout)": 6
+      },
+      "expression": {
+        "keywords": 28,
+        "colloquial": 21,
+        "natural": 32,
+        "(dropout)": 19
+      },
+      "language": {
+        "en": 16,
+        "mixed": 7,
+        "zh": 71,
+        "(dropout)": 6
+      }
+    },
+    "valid": {
+      "domain": {
+        "people": 4,
+        "(dropout)": 1,
+        "vehicles": 4,
+        "art_design": 2,
+        "animals": 2,
+        "plants_food": 1,
+        "cultural_abstract": 1,
+        "scenes": 3,
+        "objects": 2
+      },
+      "focus": {
+        "(dropout)": 2,
+        "subject": 5,
+        "relation": 2,
+        "scene": 1,
+        "composition": 3,
+        "action": 5,
+        "aesthetic": 2
+      },
+      "specificity": {
+        "minimal": 10,
+        "moderate": 9,
+        "(dropout)": 1
+      },
+      "expression": {
+        "keywords": 12,
+        "(dropout)": 2,
+        "colloquial": 4,
+        "natural": 2
+      },
+      "language": {
+        "(dropout)": 3,
+        "zh": 13,
+        "en": 2,
+        "mixed": 2
+      }
+    },
+    "test": {
+      "domain": {
+        "(dropout)": 2,
+        "vehicles": 5,
+        "art_design": 2,
+        "animals": 4,
+        "people": 6,
+        "scenes": 4,
+        "cultural_abstract": 2,
+        "plants_food": 2,
+        "objects": 3
+      },
+      "focus": {
+        "scene": 8,
+        "action": 6,
+        "subject": 3,
+        "relation": 6,
+        "composition": 3,
+        "(dropout)": 1,
+        "aesthetic": 3
+      },
+      "specificity": {
+        "moderate": 18,
+        "minimal": 11,
+        "(dropout)": 1
+      },
+      "expression": {
+        "natural": 12,
+        "(dropout)": 6,
+        "colloquial": 6,
+        "keywords": 6
+      },
+      "language": {
+        "(dropout)": 2,
+        "zh": 19,
+        "en": 7,
+        "mixed": 2
+      }
+    }
+  },
+  "inputs": [
+    {
+      "batch": "prompts-50-20261013",
+      "groups": 50,
+      "pairs_sha256": "84d20354ed208d1d618fd4626e1bb3669381d5e8579237a81a1f6e8b01d1343b",
+      "provenance_sha256": "319f2aae01f9b177c9c813e78a7ddb5d11c48d98cc77eb1417124394a2c26010"
+    },
+    {
+      "batch": "prompts-100-20261013",
+      "groups": 100,
+      "pairs_sha256": "74348869677b14165a4f453311502a409b4a5e42730f96bba7aa7749efd8b2c5",
+      "provenance_sha256": "c72c3427667eb26fa4f46e21d1f794868b2037d16a74daebbfe8d79d0233778a"
+    }
+  ],
+  "selection": "Exactly the previously delivered 50 and 100 groups; no model calls, prompt edits, or additional quality filtering during packaging.",
+  "quality": "All groups passed MidasData automatic validation. The earlier 50-group batch additionally excluded seven groups after assistant spot checks. This is not a fully human-annotated benchmark.",
+  "audit_scope": "All events for the selected source IDs, including failed intermediate generations, raw provider responses, PIU evidence and revision feedback. Unselected source IDs are excluded.",
+  "raw_data": "Result/task/lineage JSON objects are preserved. Audit lines are copied verbatim, ordered by group while preserving within-group event order. Historical absolute paths in raw provenance are archival values, not dependencies."
+}

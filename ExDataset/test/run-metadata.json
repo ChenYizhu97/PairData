@@ -1,0 +1,3330 @@
+{
+  "note": "Original whole-run metadata; the JSONL files in this directory contain only the assigned source IDs.",
+  "runs": {
+    "prompts-100-20261013/expanded-01": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 16,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T14:39:51.596047+00:00",
+        "fingerprint": "841a8e40a3d8de9c86d3f49addbae36c639c93807cf539636bd1140b4e79eaeb",
+        "planned": 77,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "input": "/home/yizhu/MidasData/runs/prompts-100-20261013/input-generated-01.jsonl",
+          "input_digest": "687a9e8fd113f25d2a8f99c92f5c1a8122a5bb644a325e0e6336286b8d20dd67"
+        },
+        "run_id": "9f6fc740cdd4",
+        "statistics": {
+          "logical_generations": 334,
+          "passed": 42,
+          "passed_distribution": {
+            "domain": {
+              "(dropout)": 2,
+              "animals": 3,
+              "art_design": 4,
+              "cultural_abstract": 3,
+              "objects": 5,
+              "people": 10,
+              "plants_food": 3,
+              "scenes": 8,
+              "vehicles": 4
+            },
+            "expression": {
+              "(dropout)": 6,
+              "colloquial": 8,
+              "keywords": 10,
+              "natural": 18
+            },
+            "focus": {
+              "(dropout)": 2,
+              "action": 13,
+              "aesthetic": 8,
+              "composition": 6,
+              "relation": 2,
+              "scene": 5,
+              "subject": 6
+            },
+            "language": {
+              "(dropout)": 2,
+              "en": 5,
+              "mixed": 3,
+              "zh": 32
+            },
+            "specificity": {
+              "(dropout)": 4,
+              "minimal": 22,
+              "moderate": 16
+            }
+          },
+          "pending": 0,
+          "planned": 77,
+          "quality_retries": 103,
+          "rejected": 35,
+          "rejection_reasons": {
+            "group_quality_budget_exhausted": 2,
+            "insufficient_expansion_space": 12,
+            "quality_budget_exhausted": 15,
+            "technical_failure:validate_english: ValidationError: 1 validation error for EnglishValidation\n  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value='```json\\n{\\n  \"semantic_...\"\\n    }\\n  ]\\n}\\n```', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/json_invalid": 5,
+            "technical_failure:validate_group: ValueError: failed group response must identify all affected retry_levels": 1
+          },
+          "requests": 769,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 3,
+              "animals": 9,
+              "art_design": 7,
+              "cultural_abstract": 5,
+              "objects": 8,
+              "people": 16,
+              "plants_food": 6,
+              "scenes": 13,
+              "vehicles": 10
+            },
+            "expression": {
+              "(dropout)": 9,
+              "colloquial": 20,
+              "keywords": 22,
+              "natural": 26
+            },
+            "focus": {
+              "(dropout)": 3,
+              "action": 21,
+              "aesthetic": 15,
+              "composition": 15,
+              "relation": 5,
+              "scene": 8,
+              "subject": 10
+            },
+            "language": {
+              "(dropout)": 4,
+              "en": 11,
+              "mixed": 8,
+              "zh": 54
+            },
+            "specificity": {
+              "(dropout)": 7,
+              "minimal": 38,
+              "moderate": 32
+            }
+          },
+          "technical_retries": 53,
+          "token_usage": {
+            "input_tokens": 646286,
+            "output_tokens": 295187,
+            "total_tokens": 941473
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "a60534d5fb06485ab851f491346242cafa163abbcd10c872479623431b552fdc",
+        "updated_at": "2026-10-13T14:41:54.256594+00:00",
+        "version": "0.1.6",
+        "workflow": "expand"
+      },
+      "original_sources": {
+        "input": {
+          "input": "/home/yizhu/MidasData/runs/prompts-100-20261013/input-generated-01.jsonl",
+          "input_digest": "687a9e8fd113f25d2a8f99c92f5c1a8122a5bb644a325e0e6336286b8d20dd67"
+        },
+        "sampler": null,
+        "type": "jsonl",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "cfa5f8ccdf2bb7b79c8bf608d3bd8fe5fdfd36c09ee016464d250fccf415c192",
+      "original_audit_sha256": "b2a37930ac3d513a6b9699b11aef2f125b6a181e5f7f12d44974de8847e1f12e",
+      "selected_ids": [
+        "gen:3628515804c0:000029",
+        "gen:3628515804c0:000032",
+        "gen:3628515804c0:000007",
+        "gen:3628515804c0:000015",
+        "gen:3628515804c0:000067",
+        "gen:3628515804c0:000081",
+        "gen:3628515804c0:000001",
+        "gen:3628515804c0:000061",
+        "gen:3628515804c0:000094"
+      ]
+    },
+    "prompts-100-20261013/expanded-02": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 16,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T14:40:41.421671+00:00",
+        "fingerprint": "77c8523f92f5f9da5cedf8a2e6b800783f3dcf7c264ceff18c06f99298c1e5bf",
+        "planned": 76,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "input": "/home/yizhu/MidasData/runs/prompts-100-20261013/input-generated-02.jsonl",
+          "input_digest": "59ee490b52d394cc6e9b7624850101472b10089c3c80d9492f9eb97949aaab19"
+        },
+        "run_id": "e250fb691c43",
+        "statistics": {
+          "logical_generations": 356,
+          "passed": 42,
+          "passed_distribution": {
+            "domain": {
+              "(dropout)": 2,
+              "animals": 9,
+              "art_design": 5,
+              "cultural_abstract": 4,
+              "people": 6,
+              "plants_food": 3,
+              "scenes": 3,
+              "vehicles": 10
+            },
+            "expression": {
+              "(dropout)": 11,
+              "colloquial": 6,
+              "keywords": 15,
+              "natural": 10
+            },
+            "focus": {
+              "(dropout)": 5,
+              "action": 10,
+              "aesthetic": 4,
+              "composition": 5,
+              "relation": 5,
+              "scene": 9,
+              "subject": 4
+            },
+            "language": {
+              "(dropout)": 2,
+              "en": 8,
+              "mixed": 4,
+              "zh": 28
+            },
+            "specificity": {
+              "(dropout)": 3,
+              "minimal": 14,
+              "moderate": 25
+            }
+          },
+          "pending": 0,
+          "planned": 76,
+          "quality_retries": 128,
+          "rejected": 34,
+          "rejection_reasons": {
+            "group_quality_budget_exhausted": 2,
+            "insufficient_expansion_space": 9,
+            "quality_budget_exhausted": 16,
+            "technical_failure:validate_english: ValidationError: 1 validation error for EnglishValidation\n  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value='```json\\n{\\n  \"semantic_...\"\\n    }\\n  ]\\n}\\n```', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/json_invalid": 6,
+            "technical_failure:validate_group: ValueError: failed group response must identify all affected retry_levels": 1
+          },
+          "requests": 832,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 2,
+              "animals": 16,
+              "art_design": 9,
+              "cultural_abstract": 6,
+              "objects": 3,
+              "people": 12,
+              "plants_food": 5,
+              "scenes": 10,
+              "vehicles": 13
+            },
+            "expression": {
+              "(dropout)": 13,
+              "colloquial": 11,
+              "keywords": 28,
+              "natural": 24
+            },
+            "focus": {
+              "(dropout)": 8,
+              "action": 14,
+              "aesthetic": 6,
+              "composition": 11,
+              "relation": 7,
+              "scene": 18,
+              "subject": 12
+            },
+            "language": {
+              "(dropout)": 4,
+              "en": 13,
+              "mixed": 10,
+              "zh": 49
+            },
+            "specificity": {
+              "(dropout)": 4,
+              "minimal": 21,
+              "moderate": 51
+            }
+          },
+          "technical_retries": 66,
+          "token_usage": {
+            "input_tokens": 716341,
+            "output_tokens": 366997,
+            "total_tokens": 1083338
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "1c53f65b9b3f46c3a83b530508063c6c89f908d60f9f88ac3d5a44528092fdcd",
+        "updated_at": "2026-10-13T14:42:52.629856+00:00",
+        "version": "0.1.6",
+        "workflow": "expand"
+      },
+      "original_sources": {
+        "input": {
+          "input": "/home/yizhu/MidasData/runs/prompts-100-20261013/input-generated-02.jsonl",
+          "input_digest": "59ee490b52d394cc6e9b7624850101472b10089c3c80d9492f9eb97949aaab19"
+        },
+        "sampler": null,
+        "type": "jsonl",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "e436c707504fc1b93faf3608464c84c716bedb63987fa3e2be33493aa5e5d24d",
+      "original_audit_sha256": "2164d322460fd0f8c6a1ebb2fbaca802ec32c3ab36cb2f964180ed296ef3fa4d",
+      "selected_ids": [
+        "gen:298e12a82439:000090",
+        "gen:298e12a82439:000058",
+        "gen:298e12a82439:000048",
+        "gen:298e12a82439:000042",
+        "gen:298e12a82439:000023",
+        "gen:298e12a82439:000032",
+        "gen:298e12a82439:000096",
+        "gen:298e12a82439:000089",
+        "gen:298e12a82439:000060",
+        "gen:298e12a82439:000007"
+      ]
+    },
+    "prompts-100-20261013/expanded-03": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 16,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T14:41:57.628006+00:00",
+        "fingerprint": "0619c7ef3a8200a08b985bb326c73e3b6ba807e79e189412bedcd0cb1759de0f",
+        "planned": 48,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "input": "/home/yizhu/MidasData/runs/prompts-100-20261013/input-generated-03.jsonl",
+          "input_digest": "87c5d0bd6be75559762f73a8473f9ab012aa6bea1517f3e4f71e05400899059d"
+        },
+        "run_id": "568895e723cf",
+        "statistics": {
+          "logical_generations": 222,
+          "passed": 25,
+          "passed_distribution": {
+            "domain": {
+              "(dropout)": 4,
+              "animals": 4,
+              "objects": 4,
+              "people": 4,
+              "plants_food": 2,
+              "scenes": 3,
+              "vehicles": 4
+            },
+            "expression": {
+              "(dropout)": 4,
+              "colloquial": 6,
+              "keywords": 7,
+              "natural": 8
+            },
+            "focus": {
+              "(dropout)": 1,
+              "action": 3,
+              "aesthetic": 2,
+              "composition": 7,
+              "relation": 4,
+              "scene": 4,
+              "subject": 4
+            },
+            "language": {
+              "(dropout)": 5,
+              "en": 1,
+              "mixed": 2,
+              "zh": 17
+            },
+            "specificity": {
+              "minimal": 16,
+              "moderate": 9
+            }
+          },
+          "pending": 0,
+          "planned": 48,
+          "quality_retries": 78,
+          "rejected": 23,
+          "rejection_reasons": {
+            "insufficient_expansion_space": 8,
+            "quality_budget_exhausted": 11,
+            "technical_failure:validate_english: ValidationError: 1 validation error for EnglishValidation\n  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value='```json\\n{\\n  \"semantic_...\"\\n    }\\n  ]\\n}\\n```', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/json_invalid": 3,
+            "technical_failure:validate_group: ValueError: failed group response must identify all affected retry_levels": 1
+          },
+          "requests": 520,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 4,
+              "animals": 7,
+              "cultural_abstract": 1,
+              "objects": 11,
+              "people": 8,
+              "plants_food": 4,
+              "scenes": 7,
+              "vehicles": 6
+            },
+            "expression": {
+              "(dropout)": 8,
+              "colloquial": 9,
+              "keywords": 13,
+              "natural": 18
+            },
+            "focus": {
+              "(dropout)": 2,
+              "action": 9,
+              "aesthetic": 4,
+              "composition": 9,
+              "relation": 7,
+              "scene": 8,
+              "subject": 9
+            },
+            "language": {
+              "(dropout)": 5,
+              "en": 3,
+              "mixed": 5,
+              "zh": 35
+            },
+            "specificity": {
+              "(dropout)": 1,
+              "minimal": 19,
+              "moderate": 28
+            }
+          },
+          "technical_retries": 47,
+          "token_usage": {
+            "input_tokens": 439282,
+            "output_tokens": 195285,
+            "total_tokens": 634567
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "c9e21a1c8b2d20267ee06fb9d90a5b8ffa6469d7e0a28f806563c42da44de997",
+        "updated_at": "2026-10-13T14:43:37.758780+00:00",
+        "version": "0.1.6",
+        "workflow": "expand"
+      },
+      "original_sources": {
+        "input": {
+          "input": "/home/yizhu/MidasData/runs/prompts-100-20261013/input-generated-03.jsonl",
+          "input_digest": "87c5d0bd6be75559762f73a8473f9ab012aa6bea1517f3e4f71e05400899059d"
+        },
+        "sampler": null,
+        "type": "jsonl",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "1d77bd4087ba474a5647ca6fc5337d4c5cfe0ceda888b7ede3acd52a519c083c",
+      "original_audit_sha256": "186b74e20bdc1fac5812e7cd49c8827c3e295eefaf73e7d43accfd29410b18fc",
+      "selected_ids": [
+        "gen:015a812aa9f8:000040",
+        "gen:015a812aa9f8:000028"
+      ]
+    },
+    "prompts-100-20261013/generated-01": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 16,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T14:38:49.260530+00:00",
+        "fingerprint": "f9f31a8ca7089513645b64d7aa386faf11ad921175e82cf2259a774d6fdef347",
+        "planned": 100,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "count": 100,
+          "seed": 142
+        },
+        "run_id": "3628515804c0",
+        "statistics": {
+          "logical_generations": 143,
+          "passed": 79,
+          "passed_distribution": {
+            "domain": {
+              "(dropout)": 4,
+              "animals": 10,
+              "art_design": 7,
+              "cultural_abstract": 5,
+              "objects": 8,
+              "people": 16,
+              "plants_food": 6,
+              "scenes": 13,
+              "vehicles": 10
+            },
+            "expression": {
+              "(dropout)": 11,
+              "colloquial": 20,
+              "keywords": 22,
+              "natural": 26
+            },
+            "focus": {
+              "(dropout)": 3,
+              "action": 21,
+              "aesthetic": 15,
+              "composition": 15,
+              "relation": 5,
+              "scene": 8,
+              "subject": 12
+            },
+            "language": {
+              "(dropout)": 4,
+              "en": 11,
+              "mixed": 8,
+              "zh": 56
+            },
+            "specificity": {
+              "(dropout)": 7,
+              "minimal": 40,
+              "moderate": 32
+            }
+          },
+          "pending": 0,
+          "planned": 100,
+          "quality_retries": 43,
+          "rejected": 21,
+          "rejection_reasons": {
+            "quality_budget_exhausted": 21
+          },
+          "requests": 286,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 10,
+              "animals": 13,
+              "art_design": 8,
+              "cultural_abstract": 7,
+              "objects": 9,
+              "people": 19,
+              "plants_food": 8,
+              "scenes": 16,
+              "vehicles": 10
+            },
+            "expression": {
+              "(dropout)": 12,
+              "colloquial": 24,
+              "keywords": 30,
+              "natural": 34
+            },
+            "focus": {
+              "(dropout)": 9,
+              "action": 24,
+              "aesthetic": 15,
+              "composition": 18,
+              "relation": 7,
+              "scene": 9,
+              "subject": 18
+            },
+            "language": {
+              "(dropout)": 9,
+              "en": 13,
+              "mixed": 10,
+              "zh": 68
+            },
+            "specificity": {
+              "(dropout)": 11,
+              "minimal": 46,
+              "moderate": 43
+            }
+          },
+          "technical_retries": 0,
+          "token_usage": {
+            "input_tokens": 165690,
+            "output_tokens": 39185,
+            "total_tokens": 204875
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "e377307986d29c725dde26e008790f8caa6e08bbc91fd7fa34c6cc5ec95b4ed1",
+        "updated_at": "2026-10-13T14:39:16.661967+00:00",
+        "version": "0.1.6",
+        "workflow": "generate"
+      },
+      "original_sources": {
+        "input": {
+          "count": 100,
+          "seed": 142
+        },
+        "sampler": {
+          "domain": [
+            [
+              "people",
+              "People and fictional characters",
+              0.2
+            ],
+            [
+              "animals",
+              "Animals and fictional creatures",
+              0.15
+            ],
+            [
+              "objects",
+              "Everyday objects, tools, and consumer products",
+              0.15
+            ],
+            [
+              "scenes",
+              "Natural, architectural, indoor, and outdoor environments",
+              0.15
+            ],
+            [
+              "plants_food",
+              "Plants, flowers, and food",
+              0.1
+            ],
+            [
+              "vehicles",
+              "Vehicles, machines, and fictional technology",
+              0.1
+            ],
+            [
+              "art_design",
+              "Illustrations, icons, posters, and other designed visual assets",
+              0.1
+            ],
+            [
+              "cultural_abstract",
+              "Cultural symbols, visual motifs, and abstract concepts",
+              0.05
+            ]
+          ],
+          "expression": [
+            [
+              "keywords",
+              "A list of keywords or short phrases",
+              0.35
+            ],
+            [
+              "natural",
+              "Neutral, naturally phrased descriptive sentences",
+              0.4
+            ],
+            [
+              "colloquial",
+              "Casual, informal, or request-style language (e.g., 'Can you draw a...', 'I want to see a...')",
+              0.25
+            ]
+          ],
+          "focus": [
+            [
+              "subject",
+              "The identity or appearance of the main subject",
+              0.2
+            ],
+            [
+              "action",
+              "An action, activity, or event",
+              0.2
+            ],
+            [
+              "scene",
+              "The surrounding setting or environment",
+              0.15
+            ],
+            [
+              "relation",
+              "Spatial or interactive relationships between multiple entities",
+              0.15
+            ],
+            [
+              "composition",
+              "Visual composition, framing, or viewpoint",
+              0.15
+            ],
+            [
+              "aesthetic",
+              "Visual style, mood, or atmosphere",
+              0.15
+            ]
+          ],
+          "language": [
+            [
+              "zh",
+              "User descriptions written primarily in Chinese",
+              0.75
+            ],
+            [
+              "en",
+              "User descriptions written entirely in English",
+              0.15
+            ],
+            [
+              "mixed",
+              "Predominantly Chinese descriptions containing occasional English words, phrases, or visual terms",
+              0.1
+            ]
+          ],
+          "specificity": [
+            [
+              "minimal",
+              "A brief visual request centered on one main subject or scene, with few explicitly specified details",
+              0.4
+            ],
+            [
+              "moderate",
+              "A concise visual request with several concrete visual attributes, relationships, or constraints, without exhaustive description",
+              0.6
+            ]
+          ]
+        },
+        "type": "llm",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "8dd63fd330b159ff963f3ca92d02fd176eb9bb4e5671b5f100eb22790cea3f94",
+      "original_audit_sha256": "1b1b178da9f521e0d5fcea7f8d4b1e1b2f0fe1fddd64aee4b3034a51d4cbfd14",
+      "selected_ids": [
+        "gen:3628515804c0:000029",
+        "gen:3628515804c0:000032",
+        "gen:3628515804c0:000007",
+        "gen:3628515804c0:000015",
+        "gen:3628515804c0:000067",
+        "gen:3628515804c0:000081",
+        "gen:3628515804c0:000001",
+        "gen:3628515804c0:000061",
+        "gen:3628515804c0:000094"
+      ]
+    },
+    "prompts-100-20261013/generated-02": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 16,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T14:39:52.673530+00:00",
+        "fingerprint": "df11b3c25219e57c0943b35ef35ba0c973f36837e6e7fdb59ed2e7cf5037c9b5",
+        "planned": 100,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "count": 100,
+          "seed": 143
+        },
+        "run_id": "298e12a82439",
+        "statistics": {
+          "logical_generations": 158,
+          "passed": 77,
+          "passed_distribution": {
+            "domain": {
+              "(dropout)": 2,
+              "animals": 16,
+              "art_design": 9,
+              "cultural_abstract": 6,
+              "objects": 4,
+              "people": 12,
+              "plants_food": 5,
+              "scenes": 10,
+              "vehicles": 13
+            },
+            "expression": {
+              "(dropout)": 13,
+              "colloquial": 11,
+              "keywords": 28,
+              "natural": 25
+            },
+            "focus": {
+              "(dropout)": 8,
+              "action": 14,
+              "aesthetic": 6,
+              "composition": 11,
+              "relation": 7,
+              "scene": 18,
+              "subject": 13
+            },
+            "language": {
+              "(dropout)": 4,
+              "en": 13,
+              "mixed": 10,
+              "zh": 50
+            },
+            "specificity": {
+              "(dropout)": 4,
+              "minimal": 22,
+              "moderate": 51
+            }
+          },
+          "pending": 0,
+          "planned": 100,
+          "quality_retries": 58,
+          "rejected": 23,
+          "rejection_reasons": {
+            "quality_budget_exhausted": 23
+          },
+          "requests": 316,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 10,
+              "animals": 16,
+              "art_design": 15,
+              "cultural_abstract": 9,
+              "objects": 5,
+              "people": 14,
+              "plants_food": 7,
+              "scenes": 11,
+              "vehicles": 13
+            },
+            "expression": {
+              "(dropout)": 13,
+              "colloquial": 18,
+              "keywords": 33,
+              "natural": 36
+            },
+            "focus": {
+              "(dropout)": 12,
+              "action": 17,
+              "aesthetic": 9,
+              "composition": 15,
+              "relation": 9,
+              "scene": 23,
+              "subject": 15
+            },
+            "language": {
+              "(dropout)": 10,
+              "en": 17,
+              "mixed": 11,
+              "zh": 62
+            },
+            "specificity": {
+              "(dropout)": 9,
+              "minimal": 29,
+              "moderate": 62
+            }
+          },
+          "technical_retries": 0,
+          "token_usage": {
+            "input_tokens": 184778,
+            "output_tokens": 45038,
+            "total_tokens": 229816
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "9659a3a262e57f13bfe225854d1a46dbdc2e7735c58b5405d7864331a914b226",
+        "updated_at": "2026-10-13T14:40:21.367488+00:00",
+        "version": "0.1.6",
+        "workflow": "generate"
+      },
+      "original_sources": {
+        "input": {
+          "count": 100,
+          "seed": 143
+        },
+        "sampler": {
+          "domain": [
+            [
+              "people",
+              "People and fictional characters",
+              0.2
+            ],
+            [
+              "animals",
+              "Animals and fictional creatures",
+              0.15
+            ],
+            [
+              "objects",
+              "Everyday objects, tools, and consumer products",
+              0.15
+            ],
+            [
+              "scenes",
+              "Natural, architectural, indoor, and outdoor environments",
+              0.15
+            ],
+            [
+              "plants_food",
+              "Plants, flowers, and food",
+              0.1
+            ],
+            [
+              "vehicles",
+              "Vehicles, machines, and fictional technology",
+              0.1
+            ],
+            [
+              "art_design",
+              "Illustrations, icons, posters, and other designed visual assets",
+              0.1
+            ],
+            [
+              "cultural_abstract",
+              "Cultural symbols, visual motifs, and abstract concepts",
+              0.05
+            ]
+          ],
+          "expression": [
+            [
+              "keywords",
+              "A list of keywords or short phrases",
+              0.35
+            ],
+            [
+              "natural",
+              "Neutral, naturally phrased descriptive sentences",
+              0.4
+            ],
+            [
+              "colloquial",
+              "Casual, informal, or request-style language (e.g., 'Can you draw a...', 'I want to see a...')",
+              0.25
+            ]
+          ],
+          "focus": [
+            [
+              "subject",
+              "The identity or appearance of the main subject",
+              0.2
+            ],
+            [
+              "action",
+              "An action, activity, or event",
+              0.2
+            ],
+            [
+              "scene",
+              "The surrounding setting or environment",
+              0.15
+            ],
+            [
+              "relation",
+              "Spatial or interactive relationships between multiple entities",
+              0.15
+            ],
+            [
+              "composition",
+              "Visual composition, framing, or viewpoint",
+              0.15
+            ],
+            [
+              "aesthetic",
+              "Visual style, mood, or atmosphere",
+              0.15
+            ]
+          ],
+          "language": [
+            [
+              "zh",
+              "User descriptions written primarily in Chinese",
+              0.75
+            ],
+            [
+              "en",
+              "User descriptions written entirely in English",
+              0.15
+            ],
+            [
+              "mixed",
+              "Predominantly Chinese descriptions containing occasional English words, phrases, or visual terms",
+              0.1
+            ]
+          ],
+          "specificity": [
+            [
+              "minimal",
+              "A brief visual request centered on one main subject or scene, with few explicitly specified details",
+              0.4
+            ],
+            [
+              "moderate",
+              "A concise visual request with several concrete visual attributes, relationships, or constraints, without exhaustive description",
+              0.6
+            ]
+          ]
+        },
+        "type": "llm",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "e7927cff130a11bc8f20264cb2901dce5b6892c0517b5d23f8772c8fb2ab081b",
+      "original_audit_sha256": "1567a4d236aa63f2b0696b04fbe1854126f2958941a25fe65570fba79a99df4d",
+      "selected_ids": [
+        "gen:298e12a82439:000090",
+        "gen:298e12a82439:000058",
+        "gen:298e12a82439:000048",
+        "gen:298e12a82439:000042",
+        "gen:298e12a82439:000023",
+        "gen:298e12a82439:000032",
+        "gen:298e12a82439:000096",
+        "gen:298e12a82439:000089",
+        "gen:298e12a82439:000060",
+        "gen:298e12a82439:000007"
+      ]
+    },
+    "prompts-100-20261013/generated-03": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 16,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T14:40:42.699717+00:00",
+        "fingerprint": "1cd21ce8aae3246266bb7a94f56bf364943cf472ffeb028b123a17ae283789ab",
+        "planned": 60,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "count": 60,
+          "seed": 144
+        },
+        "run_id": "015a812aa9f8",
+        "statistics": {
+          "logical_generations": 85,
+          "passed": 48,
+          "passed_distribution": {
+            "domain": {
+              "(dropout)": 4,
+              "animals": 7,
+              "cultural_abstract": 1,
+              "objects": 11,
+              "people": 8,
+              "plants_food": 4,
+              "scenes": 7,
+              "vehicles": 6
+            },
+            "expression": {
+              "(dropout)": 8,
+              "colloquial": 9,
+              "keywords": 13,
+              "natural": 18
+            },
+            "focus": {
+              "(dropout)": 2,
+              "action": 9,
+              "aesthetic": 4,
+              "composition": 9,
+              "relation": 7,
+              "scene": 8,
+              "subject": 9
+            },
+            "language": {
+              "(dropout)": 5,
+              "en": 3,
+              "mixed": 5,
+              "zh": 35
+            },
+            "specificity": {
+              "(dropout)": 1,
+              "minimal": 19,
+              "moderate": 28
+            }
+          },
+          "pending": 0,
+          "planned": 60,
+          "quality_retries": 25,
+          "rejected": 12,
+          "rejection_reasons": {
+            "quality_budget_exhausted": 12
+          },
+          "requests": 172,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 10,
+              "animals": 8,
+              "cultural_abstract": 1,
+              "objects": 13,
+              "people": 8,
+              "plants_food": 4,
+              "scenes": 10,
+              "vehicles": 6
+            },
+            "expression": {
+              "(dropout)": 8,
+              "colloquial": 10,
+              "keywords": 15,
+              "natural": 27
+            },
+            "focus": {
+              "(dropout)": 5,
+              "action": 12,
+              "aesthetic": 5,
+              "composition": 10,
+              "relation": 11,
+              "scene": 8,
+              "subject": 9
+            },
+            "language": {
+              "(dropout)": 7,
+              "en": 4,
+              "mixed": 6,
+              "zh": 43
+            },
+            "specificity": {
+              "(dropout)": 3,
+              "minimal": 20,
+              "moderate": 37
+            }
+          },
+          "technical_retries": 2,
+          "token_usage": {
+            "input_tokens": 99883,
+            "output_tokens": 25180,
+            "total_tokens": 125063
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "5603d3a643a3d96184c705540bcf4940b0540a012d53fc2aa9ef5cd591878b95",
+        "updated_at": "2026-10-13T14:41:01.215257+00:00",
+        "version": "0.1.6",
+        "workflow": "generate"
+      },
+      "original_sources": {
+        "input": {
+          "count": 60,
+          "seed": 144
+        },
+        "sampler": {
+          "domain": [
+            [
+              "people",
+              "People and fictional characters",
+              0.2
+            ],
+            [
+              "animals",
+              "Animals and fictional creatures",
+              0.15
+            ],
+            [
+              "objects",
+              "Everyday objects, tools, and consumer products",
+              0.15
+            ],
+            [
+              "scenes",
+              "Natural, architectural, indoor, and outdoor environments",
+              0.15
+            ],
+            [
+              "plants_food",
+              "Plants, flowers, and food",
+              0.1
+            ],
+            [
+              "vehicles",
+              "Vehicles, machines, and fictional technology",
+              0.1
+            ],
+            [
+              "art_design",
+              "Illustrations, icons, posters, and other designed visual assets",
+              0.1
+            ],
+            [
+              "cultural_abstract",
+              "Cultural symbols, visual motifs, and abstract concepts",
+              0.05
+            ]
+          ],
+          "expression": [
+            [
+              "keywords",
+              "A list of keywords or short phrases",
+              0.35
+            ],
+            [
+              "natural",
+              "Neutral, naturally phrased descriptive sentences",
+              0.4
+            ],
+            [
+              "colloquial",
+              "Casual, informal, or request-style language (e.g., 'Can you draw a...', 'I want to see a...')",
+              0.25
+            ]
+          ],
+          "focus": [
+            [
+              "subject",
+              "The identity or appearance of the main subject",
+              0.2
+            ],
+            [
+              "action",
+              "An action, activity, or event",
+              0.2
+            ],
+            [
+              "scene",
+              "The surrounding setting or environment",
+              0.15
+            ],
+            [
+              "relation",
+              "Spatial or interactive relationships between multiple entities",
+              0.15
+            ],
+            [
+              "composition",
+              "Visual composition, framing, or viewpoint",
+              0.15
+            ],
+            [
+              "aesthetic",
+              "Visual style, mood, or atmosphere",
+              0.15
+            ]
+          ],
+          "language": [
+            [
+              "zh",
+              "User descriptions written primarily in Chinese",
+              0.75
+            ],
+            [
+              "en",
+              "User descriptions written entirely in English",
+              0.15
+            ],
+            [
+              "mixed",
+              "Predominantly Chinese descriptions containing occasional English words, phrases, or visual terms",
+              0.1
+            ]
+          ],
+          "specificity": [
+            [
+              "minimal",
+              "A brief visual request centered on one main subject or scene, with few explicitly specified details",
+              0.4
+            ],
+            [
+              "moderate",
+              "A concise visual request with several concrete visual attributes, relationships, or constraints, without exhaustive description",
+              0.6
+            ]
+          ]
+        },
+        "type": "llm",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "c47bb52c1a603db49d9b4765e7d766ec1f9661e953df7d74598f9595d872261d",
+      "original_audit_sha256": "dc31684841c8bf40e0c3a4d2c4cd19169adeaafe7146ef993871f77a0e4ea383",
+      "selected_ids": [
+        "gen:015a812aa9f8:000040",
+        "gen:015a812aa9f8:000028"
+      ]
+    },
+    "prompts-50-20261013/expanded": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 8,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T13:42:05.313566+00:00",
+        "fingerprint": "829580227602f68f5d8a6e8d9ef2109fe8703a8341353b1df8d1d065c2cf17b1",
+        "planned": 39,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "input": "/home/yizhu/MidasData/runs/prompts-50-20261013/generated/data.jsonl",
+          "input_digest": "837e85f81fd50e5d0b75b5cb2835c7c60e582c08fd3ce4116a98c89d1f8ffee0"
+        },
+        "run_id": "ed9f47945a2a",
+        "statistics": {
+          "logical_generations": 169,
+          "passed": 15,
+          "passed_distribution": {
+            "domain": {
+              "animals": 1,
+              "art_design": 1,
+              "cultural_abstract": 1,
+              "objects": 1,
+              "people": 3,
+              "scenes": 3,
+              "vehicles": 5
+            },
+            "expression": {
+              "(dropout)": 2,
+              "colloquial": 3,
+              "keywords": 5,
+              "natural": 5
+            },
+            "focus": {
+              "(dropout)": 1,
+              "aesthetic": 3,
+              "composition": 2,
+              "relation": 3,
+              "scene": 2,
+              "subject": 4
+            },
+            "language": {
+              "en": 5,
+              "zh": 10
+            },
+            "specificity": {
+              "minimal": 9,
+              "moderate": 6
+            }
+          },
+          "pending": 0,
+          "planned": 39,
+          "quality_retries": 52,
+          "rejected": 24,
+          "rejection_reasons": {
+            "insufficient_expansion_space": 8,
+            "quality_budget_exhausted": 12,
+            "technical_failure:validate_english: ValidationError: 1 validation error for EnglishValidation\n  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value='```json\\n{\\n  \"semantic_...\"\\n    }\\n  ]\\n}\\n```', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/json_invalid": 2,
+            "technical_failure:validate_group: ValueError: failed group response must identify all affected retry_levels": 2
+          },
+          "requests": 387,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 2,
+              "animals": 5,
+              "art_design": 3,
+              "cultural_abstract": 1,
+              "objects": 4,
+              "people": 10,
+              "plants_food": 2,
+              "scenes": 5,
+              "vehicles": 7
+            },
+            "expression": {
+              "(dropout)": 6,
+              "colloquial": 4,
+              "keywords": 16,
+              "natural": 13
+            },
+            "focus": {
+              "(dropout)": 1,
+              "action": 7,
+              "aesthetic": 6,
+              "composition": 4,
+              "relation": 7,
+              "scene": 8,
+              "subject": 6
+            },
+            "language": {
+              "(dropout)": 1,
+              "en": 13,
+              "mixed": 4,
+              "zh": 21
+            },
+            "specificity": {
+              "(dropout)": 3,
+              "minimal": 18,
+              "moderate": 18
+            }
+          },
+          "technical_retries": 28,
+          "token_usage": {
+            "input_tokens": 325784,
+            "output_tokens": 169081,
+            "total_tokens": 494865
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "837e85f81fd50e5d0b75b5cb2835c7c60e582c08fd3ce4116a98c89d1f8ffee0",
+        "updated_at": "2026-10-13T13:44:02.574903+00:00",
+        "version": "0.1.6",
+        "workflow": "expand"
+      },
+      "original_sources": {
+        "input": {
+          "input": "/home/yizhu/MidasData/runs/prompts-50-20261013/generated/data.jsonl",
+          "input_digest": "837e85f81fd50e5d0b75b5cb2835c7c60e582c08fd3ce4116a98c89d1f8ffee0"
+        },
+        "sampler": null,
+        "type": "jsonl",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "bd4350e05d54c03dfc88393c2a6a6e05c071a10c2b59b974f7f18baf953ac753",
+      "original_audit_sha256": "5ffbee638c178c891534698235a058997911e966f3a82e4f7ededb5daa69b1fd",
+      "selected_ids": [
+        "gen:6b989c24b7c5:000021",
+        "gen:6b989c24b7c5:000036",
+        "gen:6b989c24b7c5:000020"
+      ]
+    },
+    "prompts-50-20261013/expanded-02": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 8,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T13:43:54.414974+00:00",
+        "fingerprint": "134f1c174a5c8c37cdaf6f1aef72e697f1040cb6c715cf93363f9595c30df1ce",
+        "planned": 18,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "input": "/home/yizhu/MidasData/runs/prompts-50-20261013/supplement-input-02.jsonl",
+          "input_digest": "6619049b2a36bea8a8481dc75cc7e6bde7845972936989f141048e4bc0818ed8"
+        },
+        "run_id": "64ebdcdf402f",
+        "statistics": {
+          "logical_generations": 79,
+          "passed": 10,
+          "passed_distribution": {
+            "domain": {
+              "animals": 1,
+              "objects": 2,
+              "people": 3,
+              "scenes": 2,
+              "vehicles": 2
+            },
+            "expression": {
+              "(dropout)": 2,
+              "colloquial": 3,
+              "keywords": 3,
+              "natural": 2
+            },
+            "focus": {
+              "(dropout)": 1,
+              "aesthetic": 1,
+              "composition": 1,
+              "relation": 3,
+              "scene": 1,
+              "subject": 3
+            },
+            "language": {
+              "(dropout)": 2,
+              "en": 1,
+              "mixed": 1,
+              "zh": 6
+            },
+            "specificity": {
+              "minimal": 8,
+              "moderate": 2
+            }
+          },
+          "pending": 0,
+          "planned": 18,
+          "quality_retries": 25,
+          "rejected": 8,
+          "rejection_reasons": {
+            "insufficient_expansion_space": 2,
+            "quality_budget_exhausted": 3,
+            "technical_failure:validate_english: ValidationError: 1 validation error for EnglishValidation\n  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value='```json\\n{\\n  \"semantic_...\"\\n    }\\n  ]\\n}\\n```', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/json_invalid": 2,
+            "technical_failure:validate_group: ValueError: failed group response must identify all affected retry_levels": 1
+          },
+          "requests": 189,
+          "sampled_distribution": {
+            "domain": {
+              "animals": 2,
+              "art_design": 2,
+              "objects": 4,
+              "people": 4,
+              "plants_food": 1,
+              "scenes": 3,
+              "vehicles": 2
+            },
+            "expression": {
+              "(dropout)": 3,
+              "colloquial": 5,
+              "keywords": 4,
+              "natural": 6
+            },
+            "focus": {
+              "(dropout)": 1,
+              "action": 1,
+              "aesthetic": 1,
+              "composition": 2,
+              "relation": 6,
+              "scene": 3,
+              "subject": 4
+            },
+            "language": {
+              "(dropout)": 3,
+              "en": 1,
+              "mixed": 1,
+              "zh": 13
+            },
+            "specificity": {
+              "minimal": 13,
+              "moderate": 5
+            }
+          },
+          "technical_retries": 20,
+          "token_usage": {
+            "input_tokens": 159312,
+            "output_tokens": 69510,
+            "total_tokens": 228822
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "b34536f92dcc72ae256702149c298a564aedfbe73a758b2df212acf20537e460",
+        "updated_at": "2026-10-13T13:45:20.746510+00:00",
+        "version": "0.1.6",
+        "workflow": "expand"
+      },
+      "original_sources": {
+        "input": {
+          "input": "/home/yizhu/MidasData/runs/prompts-50-20261013/supplement-input-02.jsonl",
+          "input_digest": "6619049b2a36bea8a8481dc75cc7e6bde7845972936989f141048e4bc0818ed8"
+        },
+        "sampler": null,
+        "type": "jsonl",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "63f75959906707c216e70c61bed867ea89eb1b8663d36687a59d245d767c80e9",
+      "original_audit_sha256": "c7f490316aa767e03d7d1267da8fdb0c1e39fc84c1643fe6e98229128fbe8309",
+      "selected_ids": [
+        "gen:564490aa2b94:000012"
+      ]
+    },
+    "prompts-50-20261013/expanded-03": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 8,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T13:44:38.465112+00:00",
+        "fingerprint": "5ef69271af10f665b473fea41f8df27fb5814ae3d20a19b5d2225e816a70f633",
+        "planned": 42,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "input": "/home/yizhu/MidasData/runs/prompts-50-20261013/generated-04/data.jsonl",
+          "input_digest": "4b281313cffc4304915aebaef946351ef77b1224438911865d120c418bcb67f9"
+        },
+        "run_id": "48916cb17f07",
+        "statistics": {
+          "logical_generations": 194,
+          "passed": 21,
+          "passed_distribution": {
+            "domain": {
+              "(dropout)": 1,
+              "animals": 1,
+              "cultural_abstract": 1,
+              "objects": 4,
+              "people": 5,
+              "plants_food": 1,
+              "scenes": 3,
+              "vehicles": 5
+            },
+            "expression": {
+              "(dropout)": 1,
+              "colloquial": 6,
+              "keywords": 8,
+              "natural": 6
+            },
+            "focus": {
+              "(dropout)": 2,
+              "action": 5,
+              "aesthetic": 1,
+              "composition": 2,
+              "relation": 6,
+              "scene": 2,
+              "subject": 3
+            },
+            "language": {
+              "(dropout)": 1,
+              "en": 6,
+              "zh": 14
+            },
+            "specificity": {
+              "(dropout)": 2,
+              "minimal": 7,
+              "moderate": 12
+            }
+          },
+          "pending": 0,
+          "planned": 42,
+          "quality_retries": 68,
+          "rejected": 21,
+          "rejection_reasons": {
+            "group_quality_budget_exhausted": 1,
+            "insufficient_expansion_space": 8,
+            "quality_budget_exhausted": 8,
+            "technical_failure:validate_english: ValidationError: 1 validation error for EnglishValidation\n  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value='```json\\n{\\n  \"semantic_...\"\\n    }\\n  ]\\n}\\n```', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/json_invalid": 3,
+            "technical_failure:validate_group: ValueError: failed group response must identify all affected retry_levels": 1
+          },
+          "requests": 459,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 1,
+              "animals": 4,
+              "art_design": 3,
+              "cultural_abstract": 1,
+              "objects": 7,
+              "people": 11,
+              "plants_food": 3,
+              "scenes": 6,
+              "vehicles": 6
+            },
+            "expression": {
+              "(dropout)": 5,
+              "colloquial": 9,
+              "keywords": 11,
+              "natural": 17
+            },
+            "focus": {
+              "(dropout)": 2,
+              "action": 8,
+              "aesthetic": 6,
+              "composition": 7,
+              "relation": 9,
+              "scene": 4,
+              "subject": 6
+            },
+            "language": {
+              "(dropout)": 2,
+              "en": 7,
+              "mixed": 2,
+              "zh": 31
+            },
+            "specificity": {
+              "(dropout)": 2,
+              "minimal": 14,
+              "moderate": 26
+            }
+          },
+          "technical_retries": 45,
+          "token_usage": {
+            "input_tokens": 394604,
+            "output_tokens": 197136,
+            "total_tokens": 591740
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "4b281313cffc4304915aebaef946351ef77b1224438911865d120c418bcb67f9",
+        "updated_at": "2026-10-13T13:46:53.597187+00:00",
+        "version": "0.1.6",
+        "workflow": "expand"
+      },
+      "original_sources": {
+        "input": {
+          "input": "/home/yizhu/MidasData/runs/prompts-50-20261013/generated-04/data.jsonl",
+          "input_digest": "4b281313cffc4304915aebaef946351ef77b1224438911865d120c418bcb67f9"
+        },
+        "sampler": null,
+        "type": "jsonl",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "79f16be243ee56a5e1c5ce6ca9430a3e0a56fc7c7f55547b443f720e8b090995",
+      "original_audit_sha256": "40be6e81897a3e89b1f17e23b716ea0b204f9727e15b30bb74f9744f8c42be8a",
+      "selected_ids": [
+        "gen:1269bf1d855f:000048",
+        "gen:1269bf1d855f:000042"
+      ]
+    },
+    "prompts-50-20261013/expanded-04": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 8,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T13:46:54.887907+00:00",
+        "fingerprint": "0c6d19c89f051537592fd8a6d488b4b5018bebdb34a79bd7b8b881316092ed0f",
+        "planned": 25,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "input": "/home/yizhu/MidasData/runs/prompts-50-20261013/generated-05/data.jsonl",
+          "input_digest": "6e8bc85ad2ab9ed9a7ec63240b8772c38feb7ac9b43424fe034b6aca27b44817"
+        },
+        "run_id": "28851278fa7a",
+        "statistics": {
+          "logical_generations": 98,
+          "passed": 11,
+          "passed_distribution": {
+            "domain": {
+              "animals": 2,
+              "art_design": 2,
+              "objects": 1,
+              "people": 4,
+              "scenes": 2
+            },
+            "expression": {
+              "(dropout)": 2,
+              "colloquial": 3,
+              "keywords": 3,
+              "natural": 3
+            },
+            "focus": {
+              "(dropout)": 1,
+              "action": 2,
+              "aesthetic": 2,
+              "composition": 2,
+              "relation": 1,
+              "subject": 3
+            },
+            "language": {
+              "en": 2,
+              "mixed": 2,
+              "zh": 7
+            },
+            "specificity": {
+              "minimal": 4,
+              "moderate": 7
+            }
+          },
+          "pending": 0,
+          "planned": 25,
+          "quality_retries": 23,
+          "rejected": 14,
+          "rejection_reasons": {
+            "group_quality_budget_exhausted": 1,
+            "insufficient_expansion_space": 7,
+            "quality_budget_exhausted": 4,
+            "technical_failure:validate_english: ValidationError: 1 validation error for EnglishValidation\n  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value='```json\\n{\\n  \"semantic_...\"\\n    }\\n  ]\\n}\\n```', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/json_invalid": 1,
+            "technical_failure:validate_group: ValueError: failed group response must identify all affected retry_levels": 1
+          },
+          "requests": 225,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 1,
+              "animals": 5,
+              "art_design": 3,
+              "objects": 3,
+              "people": 5,
+              "scenes": 4,
+              "vehicles": 4
+            },
+            "expression": {
+              "(dropout)": 3,
+              "colloquial": 9,
+              "keywords": 6,
+              "natural": 7
+            },
+            "focus": {
+              "(dropout)": 1,
+              "action": 5,
+              "aesthetic": 3,
+              "composition": 6,
+              "relation": 2,
+              "scene": 5,
+              "subject": 3
+            },
+            "language": {
+              "en": 4,
+              "mixed": 3,
+              "zh": 18
+            },
+            "specificity": {
+              "(dropout)": 1,
+              "minimal": 12,
+              "moderate": 12
+            }
+          },
+          "technical_retries": 16,
+          "token_usage": {
+            "input_tokens": 188364,
+            "output_tokens": 83711,
+            "total_tokens": 272075
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "6e8bc85ad2ab9ed9a7ec63240b8772c38feb7ac9b43424fe034b6aca27b44817",
+        "updated_at": "2026-10-13T13:47:59.248585+00:00",
+        "version": "0.1.6",
+        "workflow": "expand"
+      },
+      "original_sources": {
+        "input": {
+          "input": "/home/yizhu/MidasData/runs/prompts-50-20261013/generated-05/data.jsonl",
+          "input_digest": "6e8bc85ad2ab9ed9a7ec63240b8772c38feb7ac9b43424fe034b6aca27b44817"
+        },
+        "sampler": null,
+        "type": "jsonl",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "1cc2d2e0e08581467d729047401a3583586af57e35b6fa1130e0ca4cffadd6a6",
+      "original_audit_sha256": "122bc47d4f665435f81a14276014960c1fcd293caba0789523aa629858d74ab6",
+      "selected_ids": [
+        "gen:eb35d56fe057:000007",
+        "gen:eb35d56fe057:000016",
+        "gen:eb35d56fe057:000011"
+      ]
+    },
+    "prompts-50-20261013/generated": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 8,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T13:41:18.372003+00:00",
+        "fingerprint": "e4826560e56e583505dc91a008bd2e868bf10aa72b306149dbbd8d9bfa0ff2f3",
+        "planned": 50,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "count": 50,
+          "seed": 42
+        },
+        "run_id": "6b989c24b7c5",
+        "statistics": {
+          "logical_generations": 73,
+          "passed": 39,
+          "passed_distribution": {
+            "domain": {
+              "(dropout)": 2,
+              "animals": 5,
+              "art_design": 3,
+              "cultural_abstract": 1,
+              "objects": 4,
+              "people": 10,
+              "plants_food": 2,
+              "scenes": 5,
+              "vehicles": 7
+            },
+            "expression": {
+              "(dropout)": 6,
+              "colloquial": 4,
+              "keywords": 16,
+              "natural": 13
+            },
+            "focus": {
+              "(dropout)": 1,
+              "action": 7,
+              "aesthetic": 6,
+              "composition": 4,
+              "relation": 7,
+              "scene": 8,
+              "subject": 6
+            },
+            "language": {
+              "(dropout)": 1,
+              "en": 13,
+              "mixed": 4,
+              "zh": 21
+            },
+            "specificity": {
+              "(dropout)": 3,
+              "minimal": 18,
+              "moderate": 18
+            }
+          },
+          "pending": 0,
+          "planned": 50,
+          "quality_retries": 23,
+          "rejected": 11,
+          "rejection_reasons": {
+            "quality_budget_exhausted": 11
+          },
+          "requests": 146,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 3,
+              "animals": 7,
+              "art_design": 3,
+              "cultural_abstract": 1,
+              "objects": 5,
+              "people": 11,
+              "plants_food": 5,
+              "scenes": 8,
+              "vehicles": 7
+            },
+            "expression": {
+              "(dropout)": 6,
+              "colloquial": 7,
+              "keywords": 21,
+              "natural": 16
+            },
+            "focus": {
+              "(dropout)": 5,
+              "action": 9,
+              "aesthetic": 6,
+              "composition": 4,
+              "relation": 11,
+              "scene": 9,
+              "subject": 6
+            },
+            "language": {
+              "(dropout)": 4,
+              "en": 14,
+              "mixed": 6,
+              "zh": 26
+            },
+            "specificity": {
+              "(dropout)": 6,
+              "minimal": 21,
+              "moderate": 23
+            }
+          },
+          "technical_retries": 0,
+          "token_usage": {
+            "input_tokens": 84358,
+            "output_tokens": 19941,
+            "total_tokens": 104299
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "8c5bb29af9ed13f3c5602732bcc4b92a91d26b08936e74d5b988df9953e1728a",
+        "updated_at": "2026-10-13T13:41:42.890924+00:00",
+        "version": "0.1.6",
+        "workflow": "generate"
+      },
+      "original_sources": {
+        "input": {
+          "count": 50,
+          "seed": 42
+        },
+        "sampler": {
+          "domain": [
+            [
+              "people",
+              "People and fictional characters",
+              0.2
+            ],
+            [
+              "animals",
+              "Animals and fictional creatures",
+              0.15
+            ],
+            [
+              "objects",
+              "Everyday objects, tools, and consumer products",
+              0.15
+            ],
+            [
+              "scenes",
+              "Natural, architectural, indoor, and outdoor environments",
+              0.15
+            ],
+            [
+              "plants_food",
+              "Plants, flowers, and food",
+              0.1
+            ],
+            [
+              "vehicles",
+              "Vehicles, machines, and fictional technology",
+              0.1
+            ],
+            [
+              "art_design",
+              "Illustrations, icons, posters, and other designed visual assets",
+              0.1
+            ],
+            [
+              "cultural_abstract",
+              "Cultural symbols, visual motifs, and abstract concepts",
+              0.05
+            ]
+          ],
+          "expression": [
+            [
+              "keywords",
+              "A list of keywords or short phrases",
+              0.35
+            ],
+            [
+              "natural",
+              "Neutral, naturally phrased descriptive sentences",
+              0.4
+            ],
+            [
+              "colloquial",
+              "Casual, informal, or request-style language (e.g., 'Can you draw a...', 'I want to see a...')",
+              0.25
+            ]
+          ],
+          "focus": [
+            [
+              "subject",
+              "The identity or appearance of the main subject",
+              0.2
+            ],
+            [
+              "action",
+              "An action, activity, or event",
+              0.2
+            ],
+            [
+              "scene",
+              "The surrounding setting or environment",
+              0.15
+            ],
+            [
+              "relation",
+              "Spatial or interactive relationships between multiple entities",
+              0.15
+            ],
+            [
+              "composition",
+              "Visual composition, framing, or viewpoint",
+              0.15
+            ],
+            [
+              "aesthetic",
+              "Visual style, mood, or atmosphere",
+              0.15
+            ]
+          ],
+          "language": [
+            [
+              "zh",
+              "User descriptions written primarily in Chinese",
+              0.75
+            ],
+            [
+              "en",
+              "User descriptions written entirely in English",
+              0.15
+            ],
+            [
+              "mixed",
+              "Predominantly Chinese descriptions containing occasional English words, phrases, or visual terms",
+              0.1
+            ]
+          ],
+          "specificity": [
+            [
+              "minimal",
+              "A brief visual request centered on one main subject or scene, with few explicitly specified details",
+              0.4
+            ],
+            [
+              "moderate",
+              "A concise visual request with several concrete visual attributes, relationships, or constraints, without exhaustive description",
+              0.6
+            ]
+          ]
+        },
+        "type": "llm",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "72bdf5a9ae3cc040fda303bcca3b47edda9a571c0448b60f21f1158b4f745534",
+      "original_audit_sha256": "2ab6948a1dca52035a2419da9469b77f6df1cb3baada8b2224eeda47dd8bd01a",
+      "selected_ids": [
+        "gen:6b989c24b7c5:000021",
+        "gen:6b989c24b7c5:000036",
+        "gen:6b989c24b7c5:000020"
+      ]
+    },
+    "prompts-50-20261013/generated-03": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 8,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T13:42:58.482492+00:00",
+        "fingerprint": "71ade821565fa0e1bef9e963d133c15f59e3d080796cf1f4e26305638ab75e0d",
+        "planned": 20,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "count": 20,
+          "seed": 44
+        },
+        "run_id": "564490aa2b94",
+        "statistics": {
+          "logical_generations": 32,
+          "passed": 14,
+          "passed_distribution": {
+            "domain": {
+              "animals": 2,
+              "art_design": 1,
+              "objects": 3,
+              "people": 3,
+              "plants_food": 1,
+              "scenes": 3,
+              "vehicles": 1
+            },
+            "expression": {
+              "(dropout)": 3,
+              "colloquial": 3,
+              "keywords": 4,
+              "natural": 4
+            },
+            "focus": {
+              "(dropout)": 1,
+              "action": 1,
+              "aesthetic": 1,
+              "composition": 2,
+              "relation": 5,
+              "scene": 2,
+              "subject": 2
+            },
+            "language": {
+              "(dropout)": 2,
+              "en": 1,
+              "mixed": 1,
+              "zh": 10
+            },
+            "specificity": {
+              "minimal": 10,
+              "moderate": 4
+            }
+          },
+          "pending": 0,
+          "planned": 20,
+          "quality_retries": 12,
+          "rejected": 6,
+          "rejection_reasons": {
+            "quality_budget_exhausted": 6
+          },
+          "requests": 64,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 2,
+              "animals": 4,
+              "art_design": 1,
+              "objects": 3,
+              "people": 3,
+              "plants_food": 2,
+              "scenes": 4,
+              "vehicles": 1
+            },
+            "expression": {
+              "(dropout)": 3,
+              "colloquial": 5,
+              "keywords": 7,
+              "natural": 5
+            },
+            "focus": {
+              "(dropout)": 3,
+              "action": 1,
+              "aesthetic": 2,
+              "composition": 2,
+              "relation": 7,
+              "scene": 3,
+              "subject": 2
+            },
+            "language": {
+              "(dropout)": 3,
+              "en": 2,
+              "mixed": 2,
+              "zh": 13
+            },
+            "specificity": {
+              "(dropout)": 1,
+              "minimal": 13,
+              "moderate": 6
+            }
+          },
+          "technical_retries": 0,
+          "token_usage": {
+            "input_tokens": 36980,
+            "output_tokens": 8358,
+            "total_tokens": 45338
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "7f7ee89ca7ad061a3116b29ff56a92c25de462ef3ef75373acc59e96f5873923",
+        "updated_at": "2026-10-13T13:43:11.547444+00:00",
+        "version": "0.1.6",
+        "workflow": "generate"
+      },
+      "original_sources": {
+        "input": {
+          "count": 20,
+          "seed": 44
+        },
+        "sampler": {
+          "domain": [
+            [
+              "people",
+              "People and fictional characters",
+              0.2
+            ],
+            [
+              "animals",
+              "Animals and fictional creatures",
+              0.15
+            ],
+            [
+              "objects",
+              "Everyday objects, tools, and consumer products",
+              0.15
+            ],
+            [
+              "scenes",
+              "Natural, architectural, indoor, and outdoor environments",
+              0.15
+            ],
+            [
+              "plants_food",
+              "Plants, flowers, and food",
+              0.1
+            ],
+            [
+              "vehicles",
+              "Vehicles, machines, and fictional technology",
+              0.1
+            ],
+            [
+              "art_design",
+              "Illustrations, icons, posters, and other designed visual assets",
+              0.1
+            ],
+            [
+              "cultural_abstract",
+              "Cultural symbols, visual motifs, and abstract concepts",
+              0.05
+            ]
+          ],
+          "expression": [
+            [
+              "keywords",
+              "A list of keywords or short phrases",
+              0.35
+            ],
+            [
+              "natural",
+              "Neutral, naturally phrased descriptive sentences",
+              0.4
+            ],
+            [
+              "colloquial",
+              "Casual, informal, or request-style language (e.g., 'Can you draw a...', 'I want to see a...')",
+              0.25
+            ]
+          ],
+          "focus": [
+            [
+              "subject",
+              "The identity or appearance of the main subject",
+              0.2
+            ],
+            [
+              "action",
+              "An action, activity, or event",
+              0.2
+            ],
+            [
+              "scene",
+              "The surrounding setting or environment",
+              0.15
+            ],
+            [
+              "relation",
+              "Spatial or interactive relationships between multiple entities",
+              0.15
+            ],
+            [
+              "composition",
+              "Visual composition, framing, or viewpoint",
+              0.15
+            ],
+            [
+              "aesthetic",
+              "Visual style, mood, or atmosphere",
+              0.15
+            ]
+          ],
+          "language": [
+            [
+              "zh",
+              "User descriptions written primarily in Chinese",
+              0.75
+            ],
+            [
+              "en",
+              "User descriptions written entirely in English",
+              0.15
+            ],
+            [
+              "mixed",
+              "Predominantly Chinese descriptions containing occasional English words, phrases, or visual terms",
+              0.1
+            ]
+          ],
+          "specificity": [
+            [
+              "minimal",
+              "A brief visual request centered on one main subject or scene, with few explicitly specified details",
+              0.4
+            ],
+            [
+              "moderate",
+              "A concise visual request with several concrete visual attributes, relationships, or constraints, without exhaustive description",
+              0.6
+            ]
+          ]
+        },
+        "type": "llm",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "db86ecc6b80a0f33d117331fe9a927a915cb7112600b5f634e90c256ef95d32a",
+      "original_audit_sha256": "eaae3beea34590643afce05b30640302ac5de6f155a5e35aafa1e254cd473186",
+      "selected_ids": [
+        "gen:564490aa2b94:000012"
+      ]
+    },
+    "prompts-50-20261013/generated-04": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 8,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T13:43:55.647200+00:00",
+        "fingerprint": "3a3c070a8be549ad255660b76781e731807e9ca345ca8b618ecae1baac6d979c",
+        "planned": 50,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "count": 50,
+          "seed": 45
+        },
+        "run_id": "1269bf1d855f",
+        "statistics": {
+          "logical_generations": 68,
+          "passed": 42,
+          "passed_distribution": {
+            "domain": {
+              "(dropout)": 1,
+              "animals": 4,
+              "art_design": 3,
+              "cultural_abstract": 1,
+              "objects": 7,
+              "people": 11,
+              "plants_food": 3,
+              "scenes": 6,
+              "vehicles": 6
+            },
+            "expression": {
+              "(dropout)": 5,
+              "colloquial": 9,
+              "keywords": 11,
+              "natural": 17
+            },
+            "focus": {
+              "(dropout)": 2,
+              "action": 8,
+              "aesthetic": 6,
+              "composition": 7,
+              "relation": 9,
+              "scene": 4,
+              "subject": 6
+            },
+            "language": {
+              "(dropout)": 2,
+              "en": 7,
+              "mixed": 2,
+              "zh": 31
+            },
+            "specificity": {
+              "(dropout)": 2,
+              "minimal": 14,
+              "moderate": 26
+            }
+          },
+          "pending": 0,
+          "planned": 50,
+          "quality_retries": 18,
+          "rejected": 8,
+          "rejection_reasons": {
+            "quality_budget_exhausted": 8
+          },
+          "requests": 136,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 3,
+              "animals": 4,
+              "art_design": 3,
+              "cultural_abstract": 1,
+              "objects": 8,
+              "people": 11,
+              "plants_food": 6,
+              "scenes": 7,
+              "vehicles": 7
+            },
+            "expression": {
+              "(dropout)": 5,
+              "colloquial": 13,
+              "keywords": 12,
+              "natural": 20
+            },
+            "focus": {
+              "(dropout)": 4,
+              "action": 9,
+              "aesthetic": 8,
+              "composition": 7,
+              "relation": 9,
+              "scene": 5,
+              "subject": 8
+            },
+            "language": {
+              "(dropout)": 6,
+              "en": 8,
+              "mixed": 2,
+              "zh": 34
+            },
+            "specificity": {
+              "(dropout)": 3,
+              "minimal": 16,
+              "moderate": 31
+            }
+          },
+          "technical_retries": 0,
+          "token_usage": {
+            "input_tokens": 79536,
+            "output_tokens": 18836,
+            "total_tokens": 98372
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "d68ba1b09ccbaa295d87b2b5afbbe0977ccdd5afd80d74bcba781c158e9a6710",
+        "updated_at": "2026-10-13T13:44:20.713109+00:00",
+        "version": "0.1.6",
+        "workflow": "generate"
+      },
+      "original_sources": {
+        "input": {
+          "count": 50,
+          "seed": 45
+        },
+        "sampler": {
+          "domain": [
+            [
+              "people",
+              "People and fictional characters",
+              0.2
+            ],
+            [
+              "animals",
+              "Animals and fictional creatures",
+              0.15
+            ],
+            [
+              "objects",
+              "Everyday objects, tools, and consumer products",
+              0.15
+            ],
+            [
+              "scenes",
+              "Natural, architectural, indoor, and outdoor environments",
+              0.15
+            ],
+            [
+              "plants_food",
+              "Plants, flowers, and food",
+              0.1
+            ],
+            [
+              "vehicles",
+              "Vehicles, machines, and fictional technology",
+              0.1
+            ],
+            [
+              "art_design",
+              "Illustrations, icons, posters, and other designed visual assets",
+              0.1
+            ],
+            [
+              "cultural_abstract",
+              "Cultural symbols, visual motifs, and abstract concepts",
+              0.05
+            ]
+          ],
+          "expression": [
+            [
+              "keywords",
+              "A list of keywords or short phrases",
+              0.35
+            ],
+            [
+              "natural",
+              "Neutral, naturally phrased descriptive sentences",
+              0.4
+            ],
+            [
+              "colloquial",
+              "Casual, informal, or request-style language (e.g., 'Can you draw a...', 'I want to see a...')",
+              0.25
+            ]
+          ],
+          "focus": [
+            [
+              "subject",
+              "The identity or appearance of the main subject",
+              0.2
+            ],
+            [
+              "action",
+              "An action, activity, or event",
+              0.2
+            ],
+            [
+              "scene",
+              "The surrounding setting or environment",
+              0.15
+            ],
+            [
+              "relation",
+              "Spatial or interactive relationships between multiple entities",
+              0.15
+            ],
+            [
+              "composition",
+              "Visual composition, framing, or viewpoint",
+              0.15
+            ],
+            [
+              "aesthetic",
+              "Visual style, mood, or atmosphere",
+              0.15
+            ]
+          ],
+          "language": [
+            [
+              "zh",
+              "User descriptions written primarily in Chinese",
+              0.75
+            ],
+            [
+              "en",
+              "User descriptions written entirely in English",
+              0.15
+            ],
+            [
+              "mixed",
+              "Predominantly Chinese descriptions containing occasional English words, phrases, or visual terms",
+              0.1
+            ]
+          ],
+          "specificity": [
+            [
+              "minimal",
+              "A brief visual request centered on one main subject or scene, with few explicitly specified details",
+              0.4
+            ],
+            [
+              "moderate",
+              "A concise visual request with several concrete visual attributes, relationships, or constraints, without exhaustive description",
+              0.6
+            ]
+          ]
+        },
+        "type": "llm",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "d7df8bd721b3d57530b995c104af41fb6bf0a1e9e81d850fb1e5da4f60835101",
+      "original_audit_sha256": "10228cfae4ad68160abaaf0e23e7528aa3cd2d5c17fb6995647b610a65420572",
+      "selected_ids": [
+        "gen:1269bf1d855f:000048",
+        "gen:1269bf1d855f:000042"
+      ]
+    },
+    "prompts-50-20261013/generated-05": {
+      "original_manifest": {
+        "config": {
+          "concurrency": 8,
+          "generator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.8
+          },
+          "piu": {
+            "light": {
+              "max": 0,
+              "min": 0
+            },
+            "medium": {
+              "max": 4,
+              "min": 2
+            },
+            "rich": {
+              "max": 8,
+              "min": 5
+            }
+          },
+          "preview_page_size": 100,
+          "retry_initial": 1.0,
+          "retry_max": 30.0,
+          "timeout": 120.0,
+          "validator": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "model": "deepseek-flash",
+            "reasoning_effort": null,
+            "structured_output": "json",
+            "temperature": 0.0
+          }
+        },
+        "created_at": "2026-10-13T13:44:39.672943+00:00",
+        "fingerprint": "869cae7783b7e3d4e36c499257a26fb3ec9336efdb92266060caaad410c28c62",
+        "planned": 40,
+        "prompt_digest": "38ce8d8fbbc5666e99e2792796b5da408c7fa52a4f30a12d72e89abaa2b2d4e4",
+        "request": {
+          "count": 40,
+          "seed": 46
+        },
+        "run_id": "eb35d56fe057",
+        "statistics": {
+          "logical_generations": 71,
+          "passed": 25,
+          "passed_distribution": {
+            "domain": {
+              "(dropout)": 1,
+              "animals": 5,
+              "art_design": 3,
+              "objects": 3,
+              "people": 5,
+              "scenes": 4,
+              "vehicles": 4
+            },
+            "expression": {
+              "(dropout)": 3,
+              "colloquial": 9,
+              "keywords": 6,
+              "natural": 7
+            },
+            "focus": {
+              "(dropout)": 1,
+              "action": 5,
+              "aesthetic": 3,
+              "composition": 6,
+              "relation": 2,
+              "scene": 5,
+              "subject": 3
+            },
+            "language": {
+              "en": 4,
+              "mixed": 3,
+              "zh": 18
+            },
+            "specificity": {
+              "(dropout)": 1,
+              "minimal": 12,
+              "moderate": 12
+            }
+          },
+          "pending": 0,
+          "planned": 40,
+          "quality_retries": 31,
+          "rejected": 15,
+          "rejection_reasons": {
+            "quality_budget_exhausted": 15
+          },
+          "requests": 142,
+          "sampled_distribution": {
+            "domain": {
+              "(dropout)": 9,
+              "animals": 6,
+              "art_design": 3,
+              "objects": 4,
+              "people": 8,
+              "scenes": 5,
+              "vehicles": 5
+            },
+            "expression": {
+              "(dropout)": 3,
+              "colloquial": 12,
+              "keywords": 12,
+              "natural": 13
+            },
+            "focus": {
+              "(dropout)": 4,
+              "action": 8,
+              "aesthetic": 5,
+              "composition": 9,
+              "relation": 5,
+              "scene": 5,
+              "subject": 4
+            },
+            "language": {
+              "(dropout)": 3,
+              "en": 4,
+              "mixed": 4,
+              "zh": 29
+            },
+            "specificity": {
+              "(dropout)": 2,
+              "minimal": 21,
+              "moderate": 17
+            }
+          },
+          "technical_retries": 0,
+          "token_usage": {
+            "input_tokens": 82463,
+            "output_tokens": 19031,
+            "total_tokens": 101494
+          }
+        },
+        "status": "complete",
+        "tasks_digest": "1bc2207568b8dbc010d68452b29afcd13f2f8346736139f74cb6d2b12f82d078",
+        "updated_at": "2026-10-13T13:45:05.705231+00:00",
+        "version": "0.1.6",
+        "workflow": "generate"
+      },
+      "original_sources": {
+        "input": {
+          "count": 40,
+          "seed": 46
+        },
+        "sampler": {
+          "domain": [
+            [
+              "people",
+              "People and fictional characters",
+              0.2
+            ],
+            [
+              "animals",
+              "Animals and fictional creatures",
+              0.15
+            ],
+            [
+              "objects",
+              "Everyday objects, tools, and consumer products",
+              0.15
+            ],
+            [
+              "scenes",
+              "Natural, architectural, indoor, and outdoor environments",
+              0.15
+            ],
+            [
+              "plants_food",
+              "Plants, flowers, and food",
+              0.1
+            ],
+            [
+              "vehicles",
+              "Vehicles, machines, and fictional technology",
+              0.1
+            ],
+            [
+              "art_design",
+              "Illustrations, icons, posters, and other designed visual assets",
+              0.1
+            ],
+            [
+              "cultural_abstract",
+              "Cultural symbols, visual motifs, and abstract concepts",
+              0.05
+            ]
+          ],
+          "expression": [
+            [
+              "keywords",
+              "A list of keywords or short phrases",
+              0.35
+            ],
+            [
+              "natural",
+              "Neutral, naturally phrased descriptive sentences",
+              0.4
+            ],
+            [
+              "colloquial",
+              "Casual, informal, or request-style language (e.g., 'Can you draw a...', 'I want to see a...')",
+              0.25
+            ]
+          ],
+          "focus": [
+            [
+              "subject",
+              "The identity or appearance of the main subject",
+              0.2
+            ],
+            [
+              "action",
+              "An action, activity, or event",
+              0.2
+            ],
+            [
+              "scene",
+              "The surrounding setting or environment",
+              0.15
+            ],
+            [
+              "relation",
+              "Spatial or interactive relationships between multiple entities",
+              0.15
+            ],
+            [
+              "composition",
+              "Visual composition, framing, or viewpoint",
+              0.15
+            ],
+            [
+              "aesthetic",
+              "Visual style, mood, or atmosphere",
+              0.15
+            ]
+          ],
+          "language": [
+            [
+              "zh",
+              "User descriptions written primarily in Chinese",
+              0.75
+            ],
+            [
+              "en",
+              "User descriptions written entirely in English",
+              0.15
+            ],
+            [
+              "mixed",
+              "Predominantly Chinese descriptions containing occasional English words, phrases, or visual terms",
+              0.1
+            ]
+          ],
+          "specificity": [
+            [
+              "minimal",
+              "A brief visual request centered on one main subject or scene, with few explicitly specified details",
+              0.4
+            ],
+            [
+              "moderate",
+              "A concise visual request with several concrete visual attributes, relationships, or constraints, without exhaustive description",
+              0.6
+            ]
+          ]
+        },
+        "type": "llm",
+        "version": "0.1.6"
+      },
+      "original_manifest_sha256": "cc2fd50c1c968c2a1f87654f39e24ac8b71c98b93e55760be64d120a636560fc",
+      "original_audit_sha256": "fadd0c14032f8c5f544f8116156033563c83406dcaca4571dd3efed8cf9fc0d0",
+      "selected_ids": [
+        "gen:eb35d56fe057:000007",
+        "gen:eb35d56fe057:000016",
+        "gen:eb35d56fe057:000011"
+      ]
+    }
+  }
+}
