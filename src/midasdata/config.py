@@ -40,11 +40,6 @@ class ModelConfig(Contract):
             raise ValueError("base_url must be HTTP(S), without embedded credentials")
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", self.api_key_env):
             raise ValueError("api_key_env must be an environment variable name")
-        # DeepSeek has an explicit thinking switch. Apply its default to both
-        # model roles, preserving intentional extra_body overrides.
-        host = url.hostname or ""
-        if host == "deepseek.com" or host.endswith(".deepseek.com"):
-            self.extra_body = {"thinking": {"type": "disabled"}, **self.extra_body}
         try:
             json.dumps(self.extra_body, allow_nan=False)
         except (ValueError, TypeError) as exc:
@@ -98,6 +93,17 @@ class Config(Contract):
     def validate_retry(self):
         if self.retry_max < self.retry_initial:
             raise ValueError("retry_max must be >= retry_initial")
+        return self
+
+    @model_validator(mode="after")
+    def apply_thinking_defaults(self):
+        for role in ("generator", "validator"):
+            settings = getattr(self, role)
+            host = urlsplit(settings.base_url).hostname or ""
+            if host == "deepseek.com" or host.endswith(".deepseek.com"):
+                settings = settings.model_copy(deep=True)
+                settings.extra_body = {"thinking": {"type": "disabled"}, **settings.extra_body}
+                setattr(self, role, settings)
         return self
 
 

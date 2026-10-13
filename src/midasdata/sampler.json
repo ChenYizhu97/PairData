@@ -76,18 +76,13 @@
   "specificity": [
     [
       "minimal",
-      "One main visual idea with little or no additional detail",
-      0.30
+      "A brief visual request centered on one main subject or scene, with few explicitly specified details",
+      0.40
     ],
     [
       "moderate",
-      "A main subject or scene with a few explicitly specified details",
-      0.45
-    ],
-    [
-      "detailed",
-      "Multiple explicitly specified attributes, relationships, or visual constraints, but remaining a typical user input, not an exhaustive generated caption",
-      0.25
+      "A concise visual request with several concrete visual attributes, relationships, or constraints, without exhaustive description",
+      0.60
     ]
   ],
   "expression": [

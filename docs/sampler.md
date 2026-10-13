@@ -8,7 +8,7 @@ The default sampler is packaged as `src/midasdata/sampler.json` and loaded as a 
 | --- | --- |
 | `domain` | `people` 0.20, `animals` 0.15, `objects` 0.15, `scenes` 0.15, `plants_food` 0.10, `vehicles` 0.10, `art_design` 0.10, `cultural_abstract` 0.05 |
 | `focus` | `subject` 0.20, `action` 0.20, `scene` 0.15, `relation` 0.15, `composition` 0.15, `aesthetic` 0.15 |
-| `specificity` | `minimal` 0.30, `moderate` 0.45, `detailed` 0.25 |
+| `specificity` | `minimal` 0.40, `moderate` 0.60 |
 | `expression` | `keywords` 0.35, `natural` 0.40, `colloquial` 0.25 |
 | `language` | `zh` 0.75, `en` 0.15, `mixed` 0.10 |
 
@@ -18,7 +18,7 @@ Each dimension independently drops out with probability 0.1. If retained, its op
 
 `generate --seed 42` uses a separate `random.Random`. Tasks are sampled in dimension order (`domain`, `focus`, `specificity`, `expression`, `language`) and written to `tasks.jsonl` before workers start, so response order, technical retries, and quality revisions cannot change the sampling sequence. Quality revisions preserve the task ID and sampled conditions.
 
-Dropped dimensions are not checked as conditions. `specificity` controls the source description's detail, while expansion `level` controls new English visual information; they are independent. Detailed descriptions remain typical user input, rather than exhaustive captions.
+Dropped dimensions are not checked as conditions. `specificity` controls explicitly stated visual information, while expansion `level` controls new English visual information; they are independent. `minimal` centers on one main subject or scene with few specified details. `moderate` includes several concrete visual attributes, relationships, or constraints. Both stay concise and natural; verbosity and exhaustive captions are not goals.
 
 A fixed seed reproduces sampling, not model wording or the randomly assigned run ID. Original responses are retained in the audit log. `--count` is the planned task count; rejections do not trigger replacement sampling. The manifest reports planned and passed distributions for all five dimensions, using `(dropout)` for absent dimensions. Expansion records without sampling metadata also appear under `(dropout)` in those statistics.
 

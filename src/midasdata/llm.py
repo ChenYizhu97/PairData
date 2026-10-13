@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from midasdata.config import Config, ConfigurationError, check_credentials
 from midasdata.io import RunStore, digest, encode
 from midasdata.limits import MAX_TECHNICAL_ATTEMPTS
-from midasdata.prompts import VERSIONS, messages
+from midasdata.prompts import messages
 from midasdata.schemas import Decision, Level
 
 Response = TypeVar("Response", bound=BaseModel)
@@ -96,7 +96,6 @@ class ModelCaller:
             round=round,
             generation_attempt=generation_attempt,
             logical_call_id=logical_id,
-            prompt_version=VERSIONS[stage],
             event="quality_decision",
             data=decision.model_dump(),
         )
@@ -124,7 +123,6 @@ class ModelCaller:
             round=round,
             logical_call_id=logical_id,
             generation_attempt=generation_attempt,
-            prompt_version=VERSIONS[stage],
             model=settings.model,
         )
         restored, attempts = self._restore_call(

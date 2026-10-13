@@ -7,7 +7,6 @@ from pathlib import Path
 
 from midasdata.config import Config
 from midasdata.io import RunStore, atomic_lines, encode, file_digest, read_jsonl
-from midasdata.prompts import VERSIONS
 from midasdata.schemas import SampleResult
 from tests.support import SOURCE, result_examples
 
@@ -37,7 +36,6 @@ class RunStoreTest(unittest.TestCase):
             logical_call_id="call",
             technical_attempt=1,
             generation_attempt=1,
-            prompt_version=VERSIONS["expand"],
             data={"input": {"source": SOURCE}},
         )
 

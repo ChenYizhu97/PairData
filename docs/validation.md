@@ -16,9 +16,9 @@ Unsatisfied conditions and missing evidence are recorded separately as `conditio
 
 A PIU is a meaningful visual information unit that can independently change the depicted scene and can be located in text. Count facts rather than words. For example, one orange cat lying by a window specifies the subject, quantity, color, posture, and location. Explicit quantities, negation, relationships, styles, and requested in-image text are source constraints to preserve.
 
-Generators and validators share `PIU_DEFINITION`. Only validators use `PIU_VALIDATION_RULES`, which requests evidence, indices, and judgment fields. The expansion generator plans PIUs internally and returns an `EnglishDraft` containing only `prompt`; extra fields, including PIU lists, counts, evidence, and validation results, violate that response contract.
+Generation and validation instructions define a PIU as a complete visual fact traceable to the text. Spatial relationships require identifiable participants; isolated relation words are not independent PIUs. Validators return evidence, indices, and judgment fields. The expansion generator plans PIUs internally and returns an `EnglishDraft` containing only `prompt`; extra fields, including PIU lists, counts, evidence, and validation results, violate that response contract.
 
-Prompt versions are defined in `prompts.py`: `source-generate-v5`, `source-validate-v5`, `en-expand-v7`, `en-validate-v5`, and `group-validate-v6`. They participate in the recovery fingerprint.
+Model instructions and the SFT template are defined in `prompts.py`. The file's content digest participates in the recovery fingerprint.
 
 English validation covers semantic preservation, contradictions, meaningful additions, and prompt format. Original proper names and requested in-image text may remain in their source language. Explanations, level labels, and code blocks are forbidden. The program combines the validator's `valid_format` judgment with checks for a Latin letter, no code fence, and no leading `light:`, `medium:`, `rich:`, or `prompt:` label.
 

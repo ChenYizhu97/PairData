@@ -14,7 +14,7 @@ flowchart LR
   C -->|Technical or quality budget exhausted| R
 ```
 
-The generator chooses a visual concept and source description in one `SourceDraft`. Conditions come from the persisted five-dimensional task; `language` chooses Chinese, English, or mixed text independently of expression style, and omitted dimensions impose no restriction. Revisions do not resample. The current prompt allows a revision to improve condition matching and description quality; the returned concept belongs to the current draft and may change with that revision.
+The generator chooses a visual concept and source description in one `SourceDraft`. Conditions come from the persisted five-dimensional task; `language` chooses Chinese, English, or mixed text independently of expression style, and omitted dimensions impose no restriction. Revisions do not resample. The generator is instructed to address feedback while preserving the intended concept; the returned concept belongs to the current draft.
 
 `concept` is the generator's short description of its chosen visual theme, returned alongside `prompt` in the same request. Initialization supplies an empty concept; revisions receive the previous concept and description, and a successful replacement updates both. The preview displays the current returned concept. It is retained in internal results and lineage; expansion consumes the full `prompt` text.
 
@@ -71,7 +71,7 @@ Retryable failures include timeouts, connection errors, invalid JSON/schema resp
 
 Recovery replays uncommitted samples from the graph entry point. Logical call IDs are stable. Saved successes are parsed and reused without new requests; a saved raw response without a success event is also parsed and recovered if valid. Unresolved request attempts consume the technical budget. Replayed quality feedback and generation counts preserve revision budgets. Committed rejected samples are skipped just like passed samples.
 
-The fingerprint includes the request, sampler, all configuration except `concurrency` and `preview_page_size`, software version, prompt versions and file content digest, and SFT version. Expansion requests contain the resolved input path and digest. The saved task file has a separate integrity digest, and individual calls check their saved input payload digest. Any mismatch blocks recovery.
+The fingerprint includes the request, sampler, all configuration except `concurrency` and `preview_page_size`, software version, and the content digest of `prompts.py` (model instructions and SFT template). Expansion requests contain the resolved input path and digest. The saved task file has a separate integrity digest, and individual calls check their saved input payload digest. Any mismatch blocks recovery.
 
 Recovery truncates only a final audit line missing its terminating newline; invalid newline-terminated events block recovery instead of resetting budgets. Every request event is fsynced before sending the request, so an unknown outcome still counts as an attempt.
 

@@ -10,7 +10,7 @@ Source-description generation exports:
 {"id":"gen:run001:000001","sample":{"domain":"animals"},"prompt":"一只橘猫趴在窗边"}
 ```
 
-The example describes one orange cat lying by a window. `sample` supports `domain`, `focus`, `specificity`, `expression`, and `language`; language is `zh | en | mixed`, and expression is `keywords | natural | colloquial`. Source prompts are primarily Chinese, with some Chinese mixed with English keywords and some English. Dropped dimensions are omitted from `sample`; `{}` is valid. The chosen visual concept is retained in internal results, audit responses, and lineage, but is not part of the business record. Generated IDs contain the run ID and a stable task sequence number.
+The example describes one orange cat lying by a window. `sample` supports `domain`, `focus`, `specificity`, `expression`, and `language`; specificity is `minimal | moderate`, language is `zh | en | mixed`, and expression is `keywords | natural | colloquial`. Source prompts are primarily Chinese, with some Chinese mixed with English keywords and some English. Dropped dimensions are omitted from `sample`; `{}` is valid. The chosen visual concept is retained in internal results, audit responses, and lineage, but is not part of the business record. Generated IDs contain the run ID and a stable task sequence number.
 
 The expansion graph receives only:
 
@@ -28,7 +28,7 @@ Expansion exports:
 
 `level` is `light | medium | rich`, and `(id, level)` identifies an expanded record. Three rows are exported only if the entire group passes. Rows within a group are ordered Light, Medium, Rich; groups follow input order.
 
-`sft.jsonl` uses the `sft-v2` template exactly as defined in `prompts.py`. Each row contains a `messages` array with three roles: system describes the expansion task, user supplies `Expansion level: <level>\nSource description: <source>`, and assistant contains the accepted English prompt. The system and user task instructions are English. The template uses the language-neutral label `Source description:`; source text is preserved as received. IDs and levels are not separate fields in the SFT row; the level is in the user message. Business and SFT exports are derived from the same committed results. There is no automatic train/validation split, deduplication, or merging.
+`sft.jsonl` uses the template defined in `prompts.py`. Each row contains a `messages` array with three roles: system describes the expansion task, user supplies `Expansion level: <level>\nSource description: <source>`, and assistant contains the accepted English prompt. The system and user task instructions are English. The template uses the language-neutral label `Source description:`; source text is preserved as received. IDs and levels are not separate fields in the SFT row; the level is in the user message. Business and SFT exports are derived from the same committed results. There is no automatic train/validation split, deduplication, or merging.
 
 ## Run artifacts
 
@@ -42,7 +42,7 @@ Expansion exports:
 | `lineage.jsonl` | Original task metadata, internal concept, and terminal status for every committed sample |
 | `audit.jsonl` | Request attempts, raw responses and usage, parsed successes, program decisions, and errors; created on the first event |
 | `rejected.jsonl` | Full rejected sample results, including reasons and available intermediate details |
-| `manifest.json` | Configuration without API key values, request and task digests, versions, run status, and export statistics |
+| `manifest.json` | Configuration without API key values, request/task/prompt digests, software version, run status, and export statistics |
 | `run.lock` | Executor lock file; the OS lock is released when the store closes, and the file remains |
 | `preview.html`, `preview/page-*.html` | Standalone browser preview and optional pages of completed samples |
 

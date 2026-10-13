@@ -158,11 +158,20 @@ class ModelCallsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.model.ainvoke.await_count, 1)
         self.assertEqual(self.store.events[-1]["event"], "fatal")
 
-    async def test_default_thinking_switch_reaches_both_model_roles(self):
+    async def test_default_thinking_switch_reaches_each_stage(self):
         settings = ModelConfig(model="deepseek-flash", base_url="https://api.deepseek.com")
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-only"}):
             caller = ModelCaller(Config(generator=settings, validator=settings), self.store)
-        for role in ("generator", "validator"):
+        for role, stages in (
+            ("generator", ("generate", "expand")),
+            ("validator", ("validate_source", "validate_english", "validate_group")),
+        ):
             payload = caller.models[role]._get_request_payload([])
             self.assertEqual(payload["extra_body"]["thinking"], {"type": "disabled"})
             self.assertNotIn("reasoning_effort", payload)
+            model = AsyncMock()
+            model.ainvoke.return_value = AIMessage(content='{"prompt":"A cat."}')
+            caller.models[role] = model
+            for stage in stages:
+                await caller.call(stage, {}, EnglishDraft, sample_id=stage)
+            self.assertEqual(model.ainvoke.await_count, len(stages))

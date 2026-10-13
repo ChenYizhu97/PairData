@@ -354,8 +354,6 @@ class ExpandSteps:
             return "reject"
         decision = state["group_decision"]
         assert decision is not None, "routing requires a decision for the current group"
-        if decision.insufficient_expansion_space:
-            return "reject"
         return "assemble_result" if decision.passed else "dispatch"
 
     def _build_result(self, state: ExpandState, passed: bool) -> SampleResult:

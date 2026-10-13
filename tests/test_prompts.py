@@ -3,7 +3,7 @@
 import json
 import unittest
 
-from midasdata.prompts import PIU_VALIDATION_RULES, messages, sft_record
+from midasdata.prompts import messages, sft_record
 from midasdata.schemas import (
     EnglishDraft,
     EnglishValidation,
@@ -18,10 +18,9 @@ class PromptContractTest(unittest.TestCase):
         prompt = messages("expand", {"source": "一只猫", "level": "medium"}, EnglishDraft)[0][
             "content"
         ]
-        self.assertIn("valid visual information element", prompt)
-        self.assertIn("Added PIUs must be relevant, non-redundant, and visual", prompt)
-        self.assertIn("Only return a JSON object containing a prompt field", prompt)
-        self.assertNotIn(PIU_VALIDATION_RULES, prompt)
+        self.assertIn("complete visual fact", prompt)
+        self.assertNotIn("original_index", prompt)
+        self.assertNotIn("output_evidence", prompt)
         schema = json.loads(prompt.rsplit("formatting:\n", 1)[1])
         self.assertEqual(set(schema["properties"]), {"prompt"})
         self.assertEqual(schema["required"], ["prompt"])
@@ -35,13 +34,11 @@ class PromptContractTest(unittest.TestCase):
             with self.subTest(stage=stage):
                 prompt = messages(stage, {}, schema)[0]["content"]
                 instructions = prompt.split("\nOnly return a JSON object conforming", 1)[0]
-                self.assertIn("valid visual information element", instructions)
+                self.assertIn("complete visual fact", instructions)
                 for field in (
                     "evidence",
                     "original_index",
                     "output_evidence",
-                    "relevant",
-                    "novel",
                     "visual",
                 ):
                     self.assertIn(field, instructions)

@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 from midasdata import __version__, prompts
 from midasdata.config import Config
-from midasdata.prompts import SFT_VERSION, VERSIONS, sft_record
+from midasdata.prompts import sft_record
 from midasdata.sampler import DIMENSIONS, sample_conditions
 from midasdata.schemas import (
     AuditEvent,
@@ -119,9 +119,7 @@ def fingerprint(config: Config, request: dict, sampler: dict | None) -> str:
             "config": values,
             "request": request,
             "sampler": sampler,
-            "prompts": VERSIONS,
             "prompt_digest": file_digest(Path(prompts.__file__)),
-            "sft": SFT_VERSION,
             "version": __version__,
         }
     )
@@ -212,9 +210,7 @@ class RunStore:
             "request": request,
             "tasks_digest": file_digest(self.out / "tasks.jsonl"),
             "planned": count,
-            "prompt_versions": VERSIONS,
             "prompt_digest": file_digest(Path(prompts.__file__)),
-            "sft_version": SFT_VERSION,
             "version": __version__,
         }
         atomic_json(self.out / "manifest.json", self.manifest)

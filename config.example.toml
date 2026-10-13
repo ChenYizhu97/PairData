@@ -12,11 +12,9 @@ base_url = "${OPENAI_BASE_URL}"
 api_key_env = "OPENAI_API_KEY"
 structured_output = "json" # "native" uses JSON Schema; "json" parses model text
 temperature = 0.8
-# DeepSeek defaults to thinking disabled for both generation and validation.
-# To enable it explicitly, set thinking.type = "enabled" and optionally:
-# reasoning_effort = "low"
-# [generator.extra_body.thinking]
-# type = "disabled"
+# Used by both source generation and English expansion.
+[generator.extra_body.thinking]
+type = "disabled"
 
 [validator]
 model = "${MODEL_NAME}"
@@ -24,8 +22,9 @@ base_url = "${OPENAI_BASE_URL}"
 api_key_env = "OPENAI_API_KEY"
 structured_output = "json"
 temperature = 0.0
-# [validator.extra_body.thinking]
-# type = "disabled" # Set "enabled" to explicitly opt in to thinking.
+# Used by source validation, English validation, and the group consistency check.
+[validator.extra_body.thinking]
+type = "disabled"
 
 [piu.light]
 min = 0

@@ -267,7 +267,7 @@ TEMPLATE = r"""<!doctype html>
     }
 
     function origin(row) {
-      return row.source.origin || row.source.metadata?.origin || '';
+      return row.source.origin || '';
     }
 
     function options(select, values) {
@@ -414,9 +414,7 @@ def write_preview(store: RunStore, page_size: int):
                         "generation_attempt",
                         "technical_attempt",
                         "event",
-                        "data",
                     )
-                    if key != "data"
                 }
                 | ({"reason": event["data"]["reason"]} if "reason" in event["data"] else {})
             )

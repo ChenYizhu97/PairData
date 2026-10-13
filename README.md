@@ -4,7 +4,7 @@ Generate visual descriptions primarily in Chinese, with some Chinese description
 
 The project name is **MidasData**. The Python distribution, import package, and CLI command are all named `midasdata`.
 
-The current contracts follow [prompts.py](src/midasdata/prompts.py) and the packaged [sampler.json](src/midasdata/sampler.json). Sampling has five independent dimensions: `domain`, `focus`, `specificity`, `expression`, and `language`. Expression controls wording style; language controls Chinese (`zh`), English (`en`), or mixed (`mixed`) text. Each dimension has 0.1 dropout; an omitted language imposes no language restriction. Sampler explanations, model instructions, and SFT task instructions are English.
+The current contracts follow [prompts.py](src/midasdata/prompts.py) and the packaged [sampler.json](src/midasdata/sampler.json). Sampling has five independent dimensions: `domain`, `focus`, `specificity`, `expression`, and `language`. Specificity controls explicit visual information: `minimal` has weight 0.40 and `moderate` has weight 0.60; both request concise descriptions. Expression controls wording style; language controls Chinese (`zh`), English (`en`), or mixed (`mixed`) text. Each dimension has 0.1 dropout; an omitted language imposes no language restriction. Sampler explanations, model instructions, and SFT task instructions are English.
 
 ## Installation
 
@@ -16,7 +16,7 @@ uv run midasdata generate --help
 uv run midasdata expand --help
 ```
 
-Run these commands from the MidasData checkout. The module entry point is also available as `uv run python -m midasdata`. If the checkout was moved or renamed, recreate its local virtual environment and run `uv sync --locked` again; editable installs and command scripts can retain absolute paths to the previous checkout.
+Run these commands from the MidasData checkout. The module entry point is also available as `uv run python -m midasdata`.
 
 ## Model configuration
 
@@ -40,7 +40,7 @@ Precedence is CLI options > TOML > environment-derived model defaults > built-in
 
 `structured_output="json"` asks for JSON text and parses it inside the technical retry boundary. `"native"` uses the provider's JSON Schema interface. Both modes enforce the same Pydantic response contracts. Choose a mode supported by the provider: a non-retryable HTTP error, including an unsupported-interface 400 response, stops the run. Changing the mode requires a new output directory. HTTP(S) environment proxies remain enabled.
 
-For DeepSeek endpoints, generation and all validation calls explicitly default to `extra_body.thinking.type="disabled"`; `reasoning_effort` defaults to unset. An explicit `extra_body.thinking.type="enabled"` in a model section overrides this default. Other providers receive only their configured parameters. Model sections accept `reasoning_effort` and `extra_body`; the commented examples in [config.example.toml](config.example.toml) show where these settings belong.
+For DeepSeek endpoints, both the `generator` role (source generation and English expansion) and the `validator` role (source validation, English validation, and group consistency checks) default to `extra_body.thinking.type="disabled"`. Explicit thinking settings in either model section override its default; `reasoning_effort` defaults to unset. These defaults also apply without a TOML file. [config.example.toml](config.example.toml) explicitly sets both switches using DeepSeek parameters. Other providers receive only their configured parameters; adapt the example's `extra_body` tables to the selected provider. Model sections accept `reasoning_effort` and `extra_body`.
 
 | Setting | Default |
 | --- | --- |
@@ -81,7 +81,7 @@ uv run midasdata generate --count 100 --seed 42 --out runs/generated --resume
 uv run midasdata expand --input runs/generated/data.jsonl --out runs/expanded --resume
 ```
 
-The fingerprint includes the request, sampler, configuration, software version, prompt versions and file content digest, and SFT template version. For expansion, the request includes both the resolved input path and its content digest. Only `concurrency` and `preview_page_size` are excluded from the configuration fingerprint; other settings, including timeout and retry delays, must match. API key values are not included, so rotating a key without changing its configured variable name does not change the fingerprint. Resume requires a matching fingerprint and valid current-format artifacts; a mismatch requires a new run.
+The fingerprint includes the request, sampler, configuration, software version, and the content digest of `prompts.py`, which contains both model instructions and the SFT template. For expansion, the request includes both the resolved input path and its content digest. Only `concurrency` and `preview_page_size` are excluded from the configuration fingerprint; other settings, including timeout and retry delays, must match. API key values are not included, so rotating a key without changing its configured variable name does not change the fingerprint. Resume requires a matching fingerprint and valid current-format artifacts; a mismatch requires a new run.
 
 Committed passed and rejected samples are skipped. Uncommitted samples replay from the graph entry point, reuse saved successful responses, and retain their technical and generation budgets. Requests whose outcomes are unknown still consume technical attempts. Terminal rejections never receive a fresh budget on resume.
 

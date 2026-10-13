@@ -19,7 +19,7 @@ from midasdata.config import (
 )
 from midasdata.io import RunStore, input_records
 from midasdata.preview import safe_json
-from midasdata.sampler import load_sampler, sample_conditions
+from midasdata.sampler import explain, load_sampler, sample_conditions
 from midasdata.schemas import (
     ConditionCheck,
     EnglishValidation,
@@ -89,6 +89,30 @@ class ContractsTest(unittest.TestCase):
                 path.write_text(json.dumps(changed))
                 with self.assertRaises(ValueError):
                     load_sampler(path)
+
+    def test_specificity_contract_matches_sampler_and_round_trips(self):
+        sampler = load_sampler()
+        self.assertEqual(
+            {key: weight for key, _, weight in sampler["specificity"]},
+            {"minimal": 0.4, "moderate": 0.6},
+        )
+        variants = Sample.model_json_schema()["properties"]["specificity"]["anyOf"]
+        self.assertEqual(
+            next(item["enum"] for item in variants if "enum" in item), ["minimal", "moderate"]
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "input.jsonl"
+            for key, meaning, _ in sampler["specificity"]:
+                with self.subTest(specificity=key):
+                    sample = {"specificity": key}
+                    row = {"id": key, "prompt": "一只猫", "sample": sample}
+                    self.assertEqual(GeneratedRecord.model_validate(row).model_dump(), row)
+                    path.write_text(json.dumps(row) + "\n")
+                    self.assertEqual(list(input_records(path)), [row])
+                    self.assertEqual(
+                        explain(sample, sampler),
+                        {"specificity": {"value": key, "meaning": meaning}},
+                    )
 
     def test_language_business_contract_and_input_round_trip(self):
         for language, prompt in (("zh", "一只猫"), ("en", "A cat"), ("mixed", "一只 red cat")):
@@ -210,7 +234,7 @@ class ContractsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "config.toml"
             for role in ("generator", "validator"):
-                for value in ('"model-name"', '[]', '42'):
+                for value in ('"model-name"', "[]", "42"):
                     with self.subTest(role=role, value=value):
                         path.write_text(f"{role} = {value}\n")
                         with self.assertRaisesRegex(ConfigurationError, f"{role}.*TOML table"):
@@ -243,7 +267,7 @@ class ContractsTest(unittest.TestCase):
             self.assertEqual(first.api_key(first.generator), "first-secret")
             self.assertIsNone(empty.api_key(empty.generator))
 
-    def test_deepseek_defaults_disable_thinking_for_both_roles(self):
+    def test_deepseek_thinking_defaults_disabled_for_both_roles(self):
         with tempfile.TemporaryDirectory() as directory, isolated_environment():
             env = Path(directory) / ".env"
             env.write_text("model=deepseek-flash\nbase_url=https://api.deepseek.com\n")
@@ -252,19 +276,49 @@ class ContractsTest(unittest.TestCase):
                 settings = getattr(config, role)
                 self.assertEqual(settings.extra_body, {"thinking": {"type": "disabled"}})
                 self.assertIsNone(settings.reasoning_effort)
-            config.generator.extra_body["thinking"]["type"] = "enabled"
-            self.assertEqual(config.validator.extra_body["thinking"]["type"], "disabled")
+            config.validator.extra_body["thinking"]["type"] = "enabled"
+            self.assertEqual(
+                load_config(None, {}, env).validator.extra_body["thinking"]["type"], "disabled"
+            )
+
+    def test_thinking_defaults_do_not_mutate_shared_model_settings(self):
+        settings = ModelConfig(base_url="https://api.deepseek.com", extra_body={"custom": [1]})
+        config = Config(generator=settings, validator=settings)
+        self.assertEqual(settings.extra_body, {"custom": [1]})
+        self.assertEqual(config.generator.extra_body["thinking"], {"type": "disabled"})
+        self.assertEqual(config.validator.extra_body["thinking"], {"type": "disabled"})
+        config.generator.extra_body["custom"].append(2)
+        self.assertEqual(config.validator.extra_body["custom"], [1])
+
+    def test_example_config_thinking_defaults_and_explicit_overrides(self):
+        with tempfile.TemporaryDirectory() as directory, isolated_environment():
+            env = Path(directory) / ".env"
+            env.write_text("MODEL_NAME=deepseek-flash\nOPENAI_BASE_URL=https://api.deepseek.com\n")
+            example = Path(__file__).resolve().parents[1] / "config.example.toml"
+            config = load_config(example, {}, env)
+            self.assertEqual(config.generator.extra_body["thinking"], {"type": "disabled"})
+            self.assertEqual(config.validator.extra_body["thinking"], {"type": "disabled"})
+            path = Path(directory) / "config.toml"
+            path.write_text(
+                '[generator.extra_body.thinking]\ntype="enabled"\n'
+                '[validator.extra_body.thinking]\ntype="enabled"\n'
+            )
+            config = load_config(path, {}, env)
+            self.assertEqual(config.generator.extra_body["thinking"], {"type": "enabled"})
+            self.assertEqual(config.validator.extra_body["thinking"], {"type": "enabled"})
 
     def test_explicit_thinking_and_other_provider_settings_are_preserved(self):
         body = {"thinking": {"type": "enabled"}, "custom": [1, 2]}
         settings = ModelConfig(base_url="https://api.deepseek.com", extra_body=body)
         self.assertEqual(settings.extra_body, body)
-        self.assertEqual(ModelConfig().extra_body, {})
-        self.assertEqual(ModelConfig(base_url="https://deepseek.com.example/v1").extra_body, {})
-        self.assertEqual(
-            ModelConfig(base_url="https://api.deepseek.com", extra_body={"custom": 1}).extra_body,
-            {"thinking": {"type": "disabled"}, "custom": 1},
-        )
+        config = Config(generator=settings, validator=settings)
+        self.assertEqual(config.generator.extra_body, body)
+        self.assertEqual(config.validator.extra_body, body)
+        for url in ("https://api.openai.com/v1", "https://deepseek.com.example/v1"):
+            settings = ModelConfig(base_url=url, extra_body={"custom": 1})
+            config = Config(generator=settings, validator=settings)
+            self.assertEqual(config.generator.extra_body, {"custom": 1})
+            self.assertEqual(config.validator.extra_body, {"custom": 1})
 
     def test_process_environment_overrides_env_file_across_aliases(self):
         families = (
@@ -336,7 +390,7 @@ class ContractsTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "duplicate input ID"):
                 list(input_records(path))
 
-    def test_resume_rejects_prompt_text_changes_without_a_version_change(self):
+    def test_resume_rejects_prompt_content_changes(self):
         from unittest.mock import patch
 
         with tempfile.TemporaryDirectory() as directory:

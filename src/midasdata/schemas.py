@@ -38,7 +38,7 @@ class Sample(Contract):
     focus: Literal["subject", "action", "scene", "relation", "composition", "aesthetic"] | None = (
         None
     )
-    specificity: Literal["minimal", "moderate", "detailed"] | None = None
+    specificity: Literal["minimal", "moderate"] | None = None
     expression: Literal["keywords", "natural", "colloquial"] | None = None
     language: Literal["zh", "en", "mixed"] | None = None
 
@@ -206,7 +206,6 @@ class AuditEvent(Contract):
     logical_call_id: str
     technical_attempt: int = 0
     generation_attempt: int = 0
-    prompt_version: str
     model: str = ""
     data: dict = Field(default_factory=dict)
 
