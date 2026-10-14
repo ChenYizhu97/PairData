@@ -30,6 +30,7 @@ include = [
   "/docs",
   "/scripts",
   "/README.md",
+  "/README.en.md",
   "/config.example.toml",
   "/pyproject.toml",
   "/uv.lock",

@@ -1,68 +1,72 @@
-# Data contracts and provenance
+# 数据契约与来源追踪
 
-JSONL files use UTF-8, with one JSON object per nonblank line. Business record models reject unknown fields, empty or whitespace-only IDs and prompts, and unsupported levels. IDs and prompts are stripped of leading and trailing whitespace.
+**中文** | [English](data.en.md) · [首页](../README.md)
 
-## Business records
+JSONL 文件使用 UTF-8 编码，每个非空行包含一个 JSON 对象。业务记录模型拒绝未知字段、空白 ID 或提示词，以及不支持的扩写等级。ID 和提示词会去除首尾空白。
 
-Source-description generation exports:
+## 业务记录
+
+源描述生成导出：
 
 ```json
 {"id":"gen:run001:000001","sample":{"domain":"animals"},"prompt":"一只橘猫趴在窗边"}
 ```
 
-The example describes one orange cat lying by a window. `sample` supports `domain`, `focus`, `specificity`, `expression`, and `language`; specificity is `minimal | moderate`, language is `zh | en | mixed`, and expression is `keywords | natural | colloquial`. Source prompts are primarily Chinese, with some Chinese mixed with English keywords and some English. Dropped dimensions are omitted from `sample`; `{}` is valid. The chosen visual concept is retained in internal results, audit responses, and lineage, but is not part of the business record. Generated IDs contain the run ID and a stable task sequence number.
+这个示例描述了一只趴在窗边的橘猫。`sample` 支持 `domain`、`focus`、`specificity`、`expression` 和 `language`；其中 specificity 为 `minimal | moderate`，language 为 `zh | en | mixed`，expression 为 `keywords | natural | colloquial`。源描述以中文为主，也包含部分夹杂英文关键词的中文和纯英文。被丢弃的维度不出现在 `sample` 中；`{}` 是合法值。选定的视觉概念保存在内部结果、审计响应和来源追踪记录中，不属于业务记录。生成的 ID 包含运行 ID 和稳定的任务序号。
 
-The expansion graph receives only:
+扩写接受以下外部输入：
 
 ```json
 {"id":"gen:run001:000001","prompt":"一只橘猫趴在窗边"}
 ```
 
-The CLI accepts either this `SourceRecord` shape or a `GeneratedRecord` with `sample`. It validates the input, saves its full accepted shape in the task list, and projects it to `id` and `prompt` before invoking the graph. Bare source records have no sampling metadata; the executor still records the resolved input path as their origin. Input IDs must be unique after whitespace normalization. Arbitrary extra input metadata is not accepted.
+CLI 接受这种 `InputPrompt` 结构，也接受带有 `sample` 的 `SourcePromptRecord`。它先校验输入，将接受的完整结构保存到任务列表，再提取 `task_id` 和 `source_prompt` 调用工作流。未提供 `sample` 的源记录没有采样元数据；runner 仍会将解析后的输入路径记录为来源。去除首尾空白后，输入 ID 必须唯一。不接受任意附加的输入元数据。
 
-Expansion exports:
+扩写导出：
 
 ```json
 {"id":"gen:run001:000001","level":"light","prompt":"An orange cat lying by a window."}
 ```
 
-`level` is `light | medium | rich`, and `(id, level)` identifies an expanded record. Three rows are exported only if the entire group passes. Rows within a group are ordered Light, Medium, Rich; groups follow input order.
+`level` 为 `light | medium | rich`，`(id, level)` 唯一标识一条扩写记录。只有整组通过才导出三行。组内按 Light、Medium、Rich 排列，各组按输入顺序排列。
 
-`sft.jsonl` uses the template defined in `prompts.py`. Each row contains a `messages` array with three roles: system describes the expansion task, user supplies `Expansion level: <level>\nSource description: <source>`, and assistant contains the accepted English prompt. The system and user task instructions are English. The template uses the language-neutral label `Source description:`; source text is preserved as received. IDs and levels are not separate fields in the SFT row; the level is in the user message. Business and SFT exports are derived from the same committed results. There is no automatic train/validation split, deduplication, or merging.
+`sft.jsonl` 使用 `prompts.py` 中定义的模板。每行包含一个 `messages` 数组，包含三个角色：system 描述扩写任务，user 提供 `Expansion level: <level>\nSource description: <source>`，assistant 包含通过校验的英文提示词。system 和 user 中的任务指令使用英文。模板采用不限定语言的标签 `Source description:`，源文本按接收到的内容保留。SFT 行不单独设置 ID 和等级字段；等级包含在 user 消息中。业务导出和 SFT 导出来自同一批已提交结果。不自动划分训练集和验证集，也不自动去重或合并。
 
-## Run artifacts
+## 运行产物
 
-| Path | Content |
+| 路径 | 内容 |
 | --- | --- |
-| `tasks.jsonl` | Stable, validated task sequence saved before model requests |
-| `results/<sha256(id)>.json` | Complete terminal `SampleResult`, atomically committed per sample; expansion includes the entire group |
-| `data.jsonl` | Business records for passed samples only |
-| `sft.jsonl` | Training messages for passed expansion groups only |
-| `sources.json` | Source type, request/input digest, sampler, and software version |
-| `lineage.jsonl` | Original task metadata, internal concept, and terminal status for every committed sample |
-| `audit.jsonl` | Request attempts, raw responses and usage, parsed successes, program decisions, and errors; created on the first event |
-| `rejected.jsonl` | Full rejected sample results, including reasons and available intermediate details |
-| `manifest.json` | Configuration without API key values, request/task/prompt digests, software version, run status, and export statistics |
-| `run.lock` | Executor lock file; the OS lock is released when the store closes, and the file remains |
-| `preview.html`, `preview/page-*.html` | Standalone browser preview and optional pages of completed samples |
+| `tasks.jsonl` | 在模型请求前保存的稳定、已校验任务序列 |
+| `results/<sha256(id)>.json` | 每个样本原子提交的完整终态 `TaskResult`；扩写结果包含整组 |
+| `data.jsonl` | 仅包含通过样本的业务记录 |
+| `sft.jsonl` | 仅包含通过扩写组的训练消息 |
+| `sources.json` | 来源类型、请求或输入摘要、采样器及软件版本 |
+| `lineage.jsonl` | 每个已提交样本的原始任务元数据、内部概念和终态 |
+| `audit.jsonl` | 请求尝试、原始响应与用量、成功通过解析检查的输出快照、节点质量决策和错误；在第一个事件产生时创建 |
+| `rejected.jsonl` | 完整的拒绝结果，包含原因和可用的中间细节 |
+| `manifest.json` | 不含 API 密钥值的配置、请求/任务/提示词摘要、软件版本、运行状态和导出统计 |
+| `run.lock` | 运行目录锁文件；存储关闭时释放操作系统锁，文件保留 |
+| `preview.html`, `preview/page-*.html` | 可独立打开的浏览器预览，以及按需生成的完成样本分页 |
 
-Audit events distinguish `technical_attempt` (at most five within one logical call) from `generation_attempt` (at most three per source sample or English level). `logical_call_id` is derived from sample ID, stage, level, round, and generation attempt. Each request saves an input payload digest to detect inconsistent replay. Token statistics aggregate integer usage fields returned by the service; absent usage remains empty, and costs are not estimated.
+审计事件区分 `technical_attempt`（一次逻辑模型操作内最多五次）与 `generation_attempt`（每条源描述或每个英文扩写等级最多三次）。`logical_call_id` 由样本 ID、阶段、等级、轮次和生成次数确定。每次请求保存输入载荷摘要，以检测重放是否一致。token 统计汇总服务返回的整数用量字段；服务未返回用量时保持为空，不估算费用。
 
-The executor performs storage writes synchronously in its event loop. Each audit append is flushed and fsynced; the request event is durable before the model request starts. Task files, manifests, source metadata, committed results, exports, and previews use temporary files, fsync, atomic replacement, and directory fsync. Replacement is atomic per file, not across all exported files; resume rebuilds exports after an interruption. `run.lock` prevents two executors from writing the same run concurrently.
+runner、执行层和工作流节点在事件循环中同步通过 `RunStore` 写入。每次追加审计事件都会 flush 和 fsync；模型请求开始前，请求事件已经持久化。任务文件、运行清单、来源元数据、已提交结果、导出和预览使用临时文件、fsync、原子替换和目录 fsync。原子替换以单个文件为单位，不覆盖所有导出文件；中断后恢复会重建导出。`run.lock` 阻止两个进程同时写入同一个运行目录。
 
-## Internal result structure
+## 内部结果结构
 
-`SampleResult.workflow` selects the record and detail types:
+`TaskResult.workflow` 决定记录和详情的类型：
 
-| Workflow | `records` | `details` |
+| 工作流 | `records` | `details` |
 | --- | --- | --- |
-| `generate` | `GeneratedRecord` list | `GenerateDetails`: draft `prompt`, current `validation` and `decision`, `generation_attempt`, and `feedback` |
-| `expand` | `ExpandedRecord` list | `ExpandDetails`: `round`, `levels`, current `group_validation` and `group_decision`, and per-level `feedback` |
+| `generate` | `SourcePromptRecord` 列表 | `SourceGenerationDetails`：草稿 `prompt`、当前 `validation` 和 `decision`、`generation_attempt`、`feedback` |
+| `expand` | `ExpandedPromptRecord` 列表 | `PromptExpansionDetails`：`round`、`levels`、当前 `group_validation` 和 `group_decision`、各等级的 `feedback` |
 
-Each entry in `ExpandDetails.levels` is a `LevelResult` with level, round, generation attempt, status, prompt, optional validation and decision, and reason. Its status is `passed`, `quality_failed`, or `technical_failed`. These are single-level statuses; the enclosing sample status is `passed` or `rejected`.
+`PromptExpansionDetails.levels` 中的每一项都是 `ExpansionResult`，包含等级、轮次、生成次数、状态、提示词、可选的校验报告和决策，以及原因。它的状态为 `passed`、`quality_failed` 或 `technical_failed`。这些是单档状态；外层样本的状态为 `passed` 或 `rejected`。
 
-Records and details from the wrong workflow and unknown nested fields are rejected. `source` allows extensible provenance metadata. Storage, export, and the review script read typed models; preview generation serializes them to embedded JSON.
+不属于当前工作流的记录和详情，以及嵌套结构中的未知字段，都会被拒绝。`source` 允许扩展来源元数据。存储、导出和评审脚本读取有类型约束的模型；预览生成时将它们序列化为嵌入页面的 JSON。
 
-Optional detail fields are fully serialized with their defaults, including `null` for absent validation and decisions. Dropped dimensions are omitted only from business records' `sample`. The decision's `insufficient_expansion_space` flag is saved together with the original validation and rejection reason. Artifacts are read and written using the current contracts in `schemas.py`.
+可选详情字段连同默认值一起完整序列化，包括缺少校验报告和决策时的 `null`。只有业务记录的 `sample` 会省略被丢弃的维度。决策中的 `insufficient_expansion_space` 标记与原始校验报告、拒绝原因一起保存。产物按 `schemas.py` 中的当前契约读写。
 
-When a new draft replaces old text, its current validation and decision are cleared until that draft is validated. Previous evidence remains in `audit.jsonl`. Entering a new expansion round also clears the previous group validation and decision, while carrying revision feedback to the requested levels.
+新草稿替换旧文本后，当前校验报告和决策会清空，直到新草稿完成校验。先前的证据仍保存在 `audit.jsonl` 中。进入新一轮扩写时，也会清空上一轮的组校验报告和决策，同时将修订反馈传给需要修改的等级。
+
+软件版本和工作流版本包含在运行清单及恢复指纹中。内部图状态与工作流节点定义在同一模块，不放在 `schemas.py` 中。

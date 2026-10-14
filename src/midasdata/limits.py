@@ -1,4 +1,8 @@
-"""Attempt limits include the first request or generation."""
+"""预算包含第一次生成或请求。
 
-MAX_GENERATION_ATTEMPTS = 3
-MAX_TECHNICAL_ATTEMPTS = 5
+Budgets include the initial generation or request.
+"""
+
+MAX_DRAFTS = 3
+MAX_REQUEST_ATTEMPTS = 5
+WORKFLOW_REVISION = 2

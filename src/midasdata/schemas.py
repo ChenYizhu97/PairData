@@ -1,6 +1,9 @@
-"""Business contracts, model responses, and internal graph state."""
+"""模型响应和落盘记录。工作流的运行状态定义在各自模块中。
 
-from typing import Annotated, Literal, NotRequired, TypedDict
+Model responses and persisted records. Each workflow defines its own runtime state.
+"""
+
+from typing import Annotated, Literal
 
 from pydantic import (
     BaseModel,
@@ -12,8 +15,8 @@ from pydantic import (
 )
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
-Level = Literal["light", "medium", "rich"]
-LEVELS: tuple[Level, ...] = ("light", "medium", "rich")
+ExpansionLevel = Literal["light", "medium", "rich"]
+EXPANSION_LEVELS: tuple[ExpansionLevel, ...] = ("light", "medium", "rich")
 Dimension = Literal["domain", "focus", "specificity", "expression", "language"]
 
 
@@ -22,6 +25,11 @@ class Contract(BaseModel):
 
 
 class Sample(Contract):
+    """sampler.py 使用的五维采样契约；未采样的维度为 None。
+
+    The five-dimension sampling contract used by sampler.py; unsampled dimensions are None.
+    """
+
     domain: (
         Literal[
             "people",
@@ -43,21 +51,23 @@ class Sample(Contract):
     language: Literal["zh", "en", "mixed"] | None = None
 
 
-class SourceRecord(Contract):
+class InputPrompt(Contract):
     id: Text
     prompt: Text
 
 
-class GeneratedRecord(SourceRecord):
+class SourcePromptRecord(InputPrompt):
     sample: Sample
 
     @field_serializer("sample")
-    def serialize_sample(self, value: Sample) -> dict:
+    def serialize_conditions(self, value: Sample) -> dict:
         return value.model_dump(exclude_none=True)
 
 
-class ExpandedRecord(SourceRecord):
-    level: Level
+class ExpandedPromptRecord(InputPrompt):
+    # level 统一表示 Light、Medium、Rich 扩写等级。
+    # level consistently denotes the Light, Medium or Rich expansion level.
+    level: ExpansionLevel
 
 
 class SourceDraft(Contract):
@@ -65,17 +75,17 @@ class SourceDraft(Contract):
     prompt: Text
 
 
-class EnglishDraft(Contract):
+class ExpansionDraft(Contract):
     prompt: Text
 
 
-class ConditionCheck(Contract):
+class ConditionEvidence(Contract):
     satisfied: bool
     evidence: Text
 
 
 class SourceValidation(Contract):
-    conditions: dict[Dimension, ConditionCheck]
+    conditions: dict[Dimension, ConditionEvidence]
     visual: bool
     clean: bool
     visual_evidence: Text
@@ -101,8 +111,6 @@ class AddedPIU(Contract):
 
 
 class LevelValidation(Contract):
-    """Group-level evidence refers to the group's shared original PIU list."""
-
     semantic_preservation: bool
     no_contradiction: bool
     meaningful_addition: bool
@@ -115,159 +123,98 @@ class LevelValidation(Contract):
     feedback: str
 
 
-class EnglishValidation(LevelValidation):
-    """Standalone validation must extract its own original PIUs."""
-
+class ExpansionValidation(LevelValidation):
     original_pius: list[OriginalPIU]
 
 
-class GroupValidation(Contract):
+class ExpansionSetValidation(Contract):
+    """三个档位共享一次源事实提取；字段与固定的组校验提示词一致。
+
+    All three levels share source facts; fields match the fixed group validation prompt.
+    """
+
     original_pius: list[OriginalPIU]
-    levels: dict[Level, LevelValidation]
-    retry_levels: list[Level]
+    levels: dict[ExpansionLevel, LevelValidation]
+    retry_levels: list[ExpansionLevel]
     insufficient_expansion_space: bool
     feedback: str
 
 
-class Decision(Contract):
+class QualityDecision(Contract):
     passed: bool
     reasons: list[str] = Field(default_factory=list)
     added_count: int = 0
-    retry_levels: list[Level] = Field(default_factory=list)
+    retry_levels: list[ExpansionLevel] = Field(default_factory=list)
     insufficient_expansion_space: bool = False
 
 
-class LevelResult(Contract):
-    level: Level
+class ExpansionResult(Contract):
+    level: ExpansionLevel
     round: int
     generation_attempt: int
     status: Literal["passed", "quality_failed", "technical_failed"]
     prompt: str = ""
-    validation: EnglishValidation | None = None
-    decision: Decision | None = None
+    validation: ExpansionValidation | None = None
+    decision: QualityDecision | None = None
     reason: str = ""
 
 
-class GenerateDetails(Contract):
+class SourceGenerationDetails(Contract):
     prompt: str = ""
-    validation: SourceValidation | None = None
-    decision: Decision | None = None
     generation_attempt: int = 0
+    validation: SourceValidation | None = None
+    decision: QualityDecision | None = None
     feedback: str = ""
 
 
-class ExpandDetails(Contract):
+class PromptExpansionDetails(Contract):
     round: int = 0
-    levels: dict[Level, LevelResult] = Field(default_factory=dict)
-    group_validation: GroupValidation | None = None
-    group_decision: Decision | None = None
-    feedback: dict[Level, str] = Field(default_factory=dict)
+    levels: dict[ExpansionLevel, ExpansionResult] = Field(default_factory=dict)
+    group_validation: ExpansionSetValidation | None = None
+    group_decision: QualityDecision | None = None
+    feedback: dict[ExpansionLevel, str] = Field(default_factory=dict)
 
 
-class SampleResult(Contract):
+class TaskResult(Contract):
+    """一个任务的终态；扩写任务以整组三档为提交单位。
+
+    The final task result; expansion tasks commit all three levels together.
+    """
+
     id: Text
     workflow: Literal["generate", "expand"]
     status: Literal["passed", "rejected"]
     source: dict
-    records: list[GeneratedRecord | ExpandedRecord] = Field(default_factory=list)
+    records: list[SourcePromptRecord | ExpandedPromptRecord] = Field(default_factory=list)
     concept: str = ""
     reason: str = ""
-    details: GenerateDetails | ExpandDetails = Field(default_factory=GenerateDetails)
+    details: SourceGenerationDetails | PromptExpansionDetails
 
-    @model_validator(mode="before")
-    @classmethod
-    def select_workflow_types(cls, value: object) -> object:
-        if not isinstance(value, dict):
-            return value
-        if value.get("workflow") == "generate":
-            record_type, details_type = GeneratedRecord, GenerateDetails
-        elif value.get("workflow") == "expand":
-            record_type, details_type = ExpandedRecord, ExpandDetails
+    @model_validator(mode="after")
+    def validate_workflow_records(self):
+        if self.workflow == "generate":
+            record_type, details_type = SourcePromptRecord, SourceGenerationDetails
         else:
-            return value
-        records = value.get("records", [])
-        if not isinstance(records, list):
-            raise ValueError("records must be a list")
-        return {
-            **value,
-            "records": [record_type.model_validate(row) for row in records],
-            "details": details_type.model_validate(value.get("details", {})),
-        }
+            record_type, details_type = ExpandedPromptRecord, PromptExpansionDetails
+        if any(not isinstance(record, record_type) for record in self.records):
+            raise ValueError(f"{self.workflow} requires {record_type.__name__} records")
+        if not isinstance(self.details, details_type):
+            raise ValueError(f"{self.workflow} requires {details_type.__name__} details")
+        return self
 
 
-class AuditEvent(Contract):
+class OperationEvent(Contract):
     run_id: str
     sample_id: str
-    event: str
+    event: Literal[
+        "request", "response", "success", "quality_decision", "technical_failure", "fatal"
+    ]
     timestamp: str
     stage: str
-    level: Level | None = None
+    level: ExpansionLevel | None = None
     round: int = 0
     logical_call_id: str
     technical_attempt: int = 0
     generation_attempt: int = 0
     model: str = ""
     data: dict = Field(default_factory=dict)
-
-
-def merge_levels(
-    left: dict[Level, LevelResult], right: dict[Level, LevelResult]
-) -> dict[Level, LevelResult]:
-    """Replace by level; late results may never overwrite a newer round."""
-    merged = dict(left)
-    for level, value in right.items():
-        if level not in merged or value.round >= merged[level].round:
-            merged[level] = value
-    return merged
-
-
-class GenerateState(TypedDict, total=False):
-    id: str
-    sample: dict[Dimension, str]
-    concept: str
-    prompt: str
-    generation_attempt: int
-    validation: SourceValidation | None
-    decision: Decision | None
-    feedback: str
-    reason: str
-    result: SampleResult
-
-
-class ExpandInput(TypedDict):
-    id: str
-    prompt: str
-
-
-class ExpandUpdate(TypedDict, total=False):
-    round: int
-    pending: list[Level]
-    levels: Annotated[dict[Level, LevelResult], merge_levels]
-    feedback: dict[Level, str]
-    group_validation: GroupValidation | None
-    group_decision: Decision | None
-    reason: str
-    result: SampleResult
-
-
-class ExpandState(ExpandInput, ExpandUpdate):
-    pass
-
-
-class LevelState(TypedDict, total=False):
-    id: str
-    prompt: str
-    level: Level
-    round: int
-    generation_attempt: int
-    feedback: str
-    previous_output: str
-    output: str
-    result: LevelResult | None
-
-
-class CallContext(TypedDict):
-    sample_id: str
-    level: NotRequired[Level]
-    round: NotRequired[int]
-    generation_attempt: NotRequired[int]

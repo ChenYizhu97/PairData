@@ -1,12 +1,15 @@
-"""Create a human review sheet from real run results; never auto-approve quality."""
+"""从已提交任务生成供人工填写的评审 CSV。
+
+Generate a review CSV from committed tasks for manual assessment.
+"""
 
 import argparse
 import csv
 import json
 from pathlib import Path
 
-from midasdata.io import RunStore
-from midasdata.schemas import ExpandDetails, ExpandedRecord, GenerateDetails
+from midasdata.schemas import PromptExpansionDetails, SourceGenerationDetails
+from midasdata.storage import RunStore
 
 
 def main():
@@ -14,44 +17,45 @@ def main():
     parser.add_argument("run", type=Path)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
-    store = RunStore(args.run)
-    store.manifest = json.loads((args.run / "manifest.json").read_text(encoding="utf-8"))
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    fields = [
+        "id",
+        "workflow",
+        "automatic_status",
+        "source",
+        "sample",
+        "light",
+        "medium",
+        "rich",
+        "automatic_reason",
+        "human_semantics",
+        "human_piu",
+        "human_level_order",
+        "false_accept_or_reject",
+        "reviewer",
+        "notes",
+    ]
+    store = RunStore(args.run)
     with args.out.open("w", encoding="utf-8-sig", newline="") as handle:
-        fields = [
-            "id",
-            "workflow",
-            "automatic_status",
-            "source",
-            "sample",
-            "light",
-            "medium",
-            "rich",
-            "automatic_reason",
-            "human_semantics",
-            "human_piu",
-            "human_level_order",
-            "false_accept_or_reject",
-            "reviewer",
-            "notes",
-        ]
         writer = csv.DictWriter(handle, fields)
         writer.writeheader()
         for result in store.results():
-            levels = {
-                row.level: row.prompt for row in result.records if isinstance(row, ExpandedRecord)
-            }
-            if not levels and isinstance(result.details, ExpandDetails):
-                levels = {level: value.prompt for level, value in result.details.levels.items()}
-            prompt = result.details.prompt if isinstance(result.details, GenerateDetails) else ""
+            prompts = {}
+            source_prompt = result.source.get("prompt", "")
+            if isinstance(result.details, PromptExpansionDetails):
+                prompts = {
+                    level: expansion.prompt for level, expansion in result.details.levels.items()
+                }
+            elif isinstance(result.details, SourceGenerationDetails):
+                source_prompt = result.details.prompt
             writer.writerow(
                 {
                     "id": result.id,
                     "workflow": result.workflow,
                     "automatic_status": result.status,
-                    "source": result.source.get("prompt", prompt),
+                    "source": source_prompt,
                     "sample": json.dumps(result.source.get("sample", {}), ensure_ascii=False),
-                    **levels,
+                    **prompts,
                     "automatic_reason": result.reason,
                 }
             )

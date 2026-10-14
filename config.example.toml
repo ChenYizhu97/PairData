@@ -1,3 +1,4 @@
+# 复制为 config.toml；命令行参数优先于下方配置。
 # Copy to config.toml. CLI options override values below.
 concurrency = 4
 timeout = 120.0
@@ -6,12 +7,16 @@ retry_initial = 1.0
 retry_max = 30.0
 
 [generator]
+# 字段中的 ${ENV_NAME} 从 .env 或进程环境解析。
 # A field containing ${ENV_NAME} resolves from .env / the environment.
 model = "${MODEL_NAME}"
 base_url = "${OPENAI_BASE_URL}"
 api_key_env = "OPENAI_API_KEY"
-structured_output = "json" # "native" uses JSON Schema; "json" parses model text
+# "native" 使用 JSON Schema；"json" 解析模型返回的文本。
+# "native" uses JSON Schema; "json" parses model text.
+structured_output = "json"
 temperature = 0.8
+# 用于源描述生成和英文扩写。
 # Used by both source generation and English expansion.
 [generator.extra_body.thinking]
 type = "disabled"
@@ -22,6 +27,7 @@ base_url = "${OPENAI_BASE_URL}"
 api_key_env = "OPENAI_API_KEY"
 structured_output = "json"
 temperature = 0.0
+# 用于源描述校验、英文扩写校验和整组一致性检查。
 # Used by source validation, English validation, and the group consistency check.
 [validator.extra_body.thinking]
 type = "disabled"

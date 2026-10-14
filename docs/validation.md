@@ -1,63 +1,65 @@
-# Validation rules
+# 校验规则
 
-Automatic validation produces auditable judgments. The model still identifies and segments PIUs: program checks enforce structure, evidence, and counts, but cannot establish that every source fact was found. Human review must cover both accepted and rejected samples.
+**中文** | [English](validation.en.md) · [首页](../README.md)
 
-## Source descriptions
+自动校验产生可审计的判断。PIU 的识别和切分仍由模型完成：程序检查结构、证据和数量，但无法确认源描述中的每个事实都已被识别。人工复核应同时覆盖通过和拒绝的样本。
 
-The source validator (`validate_source` / `SourceValidation`) evaluates only sampled dimensions and returns a condition result and evidence for each. The program requires exactly those condition keys, `satisfied=true`, and evidence that appears as a contiguous, verbatim substring of the description. It also requires `visual=true`, locatable `visual_evidence`, and `clean=true`. Descriptions must not contain a Markdown code fence. For `language=zh` or `mixed`, a Chinese character is required; `mixed` also requires a Latin letter. For `language=en`, a Latin letter is required and Chinese characters are disallowed. Dropped language imposes no character-language restriction. Predominance, actual English wording, and whether mixed terms describe visual content remain model judgments.
+## 源描述
 
-Prompts allow keywords, natural language, and colloquial image requests according to `expression`; Chinese, English, and mixed Chinese/English are independently controlled by `language`. For example, `帮我画一只狗` asks for a dog image, while `养狗好吗` asks whether owning a dog is a good idea. The validator is instructed to reject unrelated conversation, garbled content, explanations, and copied sampling labels. Mixed-language words must describe visual content.
+源描述校验器（`validate_source` / `SourceValidation`）只评估实际采样的维度，为每个维度返回条件结果和证据。程序要求条件键与采样维度完全一致、`satisfied=true`，且证据是描述中连续出现的原文片段。同时要求 `visual=true`、`visual_evidence` 能在原文中定位，以及 `clean=true`。描述不能包含 Markdown 代码围栏。`language=zh` 或 `mixed` 时，必须包含汉字；`mixed` 还必须包含拉丁字母。`language=en` 时，必须包含拉丁字母，且不能包含汉字。语言维度被丢弃时，不施加字符层面的语言限制。语言占比、是否为实际英文表达，以及混合语言词语是否描述视觉内容，仍由模型判断。
 
-For `art_design`, the validator is instructed to require an explicit design form such as illustration, icon, logo, poster, graphic design, packaging, or typography. A drawing request and subject alone are insufficient. Its evidence must quote the specified form. This is a model-evaluated semantic rule; the program checks the returned condition result and evidence location, without a separate design-keyword classifier.
+提示词按 `expression` 允许关键词、自然语言和口语化图像请求；中文、英文和中英混合由 `language` 独立控制。例如，`帮我画一只狗` 是图像请求，`养狗好吗` 则是在询问养狗是否合适。校验指令要求拒绝无关对话、乱码、解释性内容和照抄的采样标签。混合语言中的词语必须描述视觉内容。
 
-Unsatisfied conditions and missing evidence are recorded separately as `condition_not_satisfied:<dimension>` and `condition_evidence_not_found:<dimension>`.
+对于 `art_design`，校验指令要求明确的设计形式，例如插画、图标、标志、海报、平面设计、包装或字体设计。只有绘画请求和主体还不够，证据必须引用所指定的设计形式。这是一条由模型评估的语义规则；程序检查返回的条件结果和证据位置，不另设设计关键词分类器。
 
-## PIUs and expansion prompts
+条件不满足和证据未找到分别记录为 `condition_not_satisfied:<dimension>` 和 `condition_evidence_not_found:<dimension>`。
 
-A PIU is a meaningful visual information unit that can independently change the depicted scene and can be located in text. Count facts rather than words. For example, one orange cat lying by a window specifies the subject, quantity, color, posture, and location. Explicit quantities, negation, relationships, styles, and requested in-image text are source constraints to preserve.
+## PIU 与扩写提示词
 
-Generation and validation instructions define a PIU as a complete visual fact traceable to the text. Spatial relationships require identifiable participants; isolated relation words are not independent PIUs. Validators return evidence, indices, and judgment fields. The expansion generator plans PIUs internally and returns an `EnglishDraft` containing only `prompt`; extra fields, including PIU lists, counts, evidence, and validation results, violate that response contract.
+PIU 是有意义的视觉信息单元，能够独立改变画面，并能在文本中定位。计数对象是事实，而非单词。例如，“一只橘猫趴在窗边”指定了主体、数量、颜色、姿态和位置。明确的数量、否定、关系、风格和要求出现在图像中的文字，都是需要保留的源约束。
 
-Model instructions and the SFT template are defined in `prompts.py`. The file's content digest participates in the recovery fingerprint.
+生成和校验指令将 PIU 定义为可追溯到文本的完整视觉事实。空间关系必须有可识别的参与对象，孤立的关系词不算独立 PIU。校验器返回证据、索引和判断字段。扩写生成器在内部规划 PIU，只返回含 `prompt` 的 `ExpansionDraft`；PIU 列表、计数、证据和校验结果等额外字段都会违反响应契约。
 
-English validation covers semantic preservation, contradictions, meaningful additions, and prompt format. Original proper names and requested in-image text may remain in their source language. Explanations, level labels, and code blocks are forbidden. The program combines the validator's `valid_format` judgment with checks for a Latin letter, no code fence, and no leading `light:`, `medium:`, `rich:`, or `prompt:` label.
+模型指令和 SFT 模板定义在 `prompts.py` 中。该文件的内容摘要参与恢复指纹计算。
 
-| Level | Default added PIUs |
+英文提示词校验覆盖语义保留、矛盾、有意义的新增内容和提示词格式。原始专名和要求出现在图像中的文字可以保留源语言。禁止解释、等级标签和代码块。程序结合校验器的 `valid_format` 判断，检查是否包含拉丁字母、是否没有代码围栏，以及是否没有以 `light:`、`medium:`、`rich:` 或 `prompt:` 标签开头。
+
+| 等级 | 默认新增 PIU 数量 |
 | --- | --- |
 | Light | 0 |
 | Medium | 2–4 |
 | Rich | 5–8 |
 
-The ranges are initial calibration targets. Medium and Rich are configurable in TOML; Light is fixed at zero. Ranges must be strictly ordered and nonoverlapping. Source constraints always take precedence over addition targets.
+这些范围是初始校准目标。Medium 和 Rich 可以在 TOML 中配置；Light 固定为零。各范围必须严格递增且互不重叠。源约束始终优先于新增数量目标。
 
-## Evidence and quality decisions
+## 证据与质量决策
 
-Each `EnglishValidation` contains `original_pius` (`fact`, source `evidence`), `preserved_pius` (zero-based `original_index`, `output_evidence`), `missing_pius`, `contradictions`, `added_pius` (`fact`, `output_evidence`, `relevant`, `novel`, `visual`), the four quality judgments, `insufficient_expansion_space`, and `feedback`.
+每份 `ExpansionValidation` 包含 `original_pius`（`fact`、源文本 `evidence`）、`preserved_pius`（从零开始的 `original_index`、`output_evidence`）、`missing_pius`、`contradictions`、`added_pius`（`fact`、`output_evidence`、`relevant`、`novel`、`visual`）、四项质量判断、`insufficient_expansion_space` 和 `feedback`。
 
-The program requires:
+程序要求：
 
-- Semantic preservation and no-contradiction judgments to pass, with empty missing-fact and contradiction lists.
-- A nonempty original PIU list, distinct fact descriptions, and source evidence that can be located verbatim.
-- Preservation indices covering every original PIU exactly once, without gaps, duplicates, or out-of-range values; every output evidence string must appear in the English prompt.
-- Distinct added facts, locatable output evidence, and `relevant`, `novel`, and `visual` all true for every addition.
-- The number of valid additions to fall within the current level's interval.
+- 语义保留和无矛盾判断通过，缺失事实列表与矛盾列表为空。
+- 原始 PIU 列表非空，事实描述互不重复，源证据能在原文中逐字定位。
+- 保留索引恰好覆盖每个原始 PIU 一次，不缺失、不重复、不越界；每个输出证据字符串都必须出现在英文提示词中。
+- 新增事实互不重复，输出证据可定位，每一项的 `relevant`、`novel` 和 `visual` 都为 true。
+- 有效新增内容的数量落在当前等级的范围内。
 
-Fact distinctness is checked within each PIU list after case folding and removal of whitespace and punctuation, including underscores: `orange fur`, `orange-fur`, and `ORANGE_FUR` count as the same fact. Evidence location is case-sensitive. Fact/evidence correspondence and novelty relative to the source still depend on the model's judgments. An unsupported claim of success cannot override failed evidence checks.
+事实去重在每个 PIU 列表内进行：统一大小写并去除空白和标点（包括下划线）后，`orange fur`、`orange-fur` 和 `ORANGE_FUR` 视为同一事实。证据定位区分大小写。事实与证据是否对应、相对于源描述是否确为新增，仍依赖模型判断。缺少证据支持的通过结论不能覆盖失败的证据检查。
 
-A Light prompt with an empty added-PIU list may pass even if the model sets `meaningful_addition=false` to mean that nothing was added. All other semantic, format, evidence, and zero-addition checks still apply.
+Light 的新增 PIU 列表为空时，即使模型用 `meaningful_addition=false` 表示没有新增，也可以通过。其余语义、格式、证据和零新增检查仍然适用。
 
-The prompts forbid counting generic quality phrases, synonyms, or repeated adjectives as new PIUs. They require every source fact to be identified and meaningful additions to be relevant, nonduplicate, and visual. Human calibration must also check that the returned lists cover all actual additions; the program cannot infer omitted PIUs from counts alone. Related attributes, positions, or poses of one visual element may be grouped during review, while unrelated objects, lighting, and composition should remain distinct.
+提示词禁止把泛化的质量修饰语、同义词或重复形容词计为新 PIU，要求识别每个源事实，并确保有意义的新增内容相关、不重复且具有视觉意义。人工校准还必须检查返回列表是否覆盖实际的全部新增内容；仅凭计数，程序无法推断遗漏的 PIU。复核时可以将同一视觉元素相关的属性、位置或姿态归为一组，而无关对象、光照和构图应分别处理。
 
-## Group validation and termination
+## 组校验与终止
 
-The group validator rechecks Light, Medium, and Rich in one response using a common PIU segmentation. `original_pius` appears only at the top level. Each level has preservation indices, additions, missing facts, contradictions, judgments, and feedback, and refers directly to that shared list; nested `original_pius` fields are forbidden. Single-level `EnglishValidation` still carries its own `original_pius`. Each level is checked against the source and its configured interval, and valid addition counts must increase strictly.
+组校验器在一次响应中使用共同的 PIU 切分，重新检查 Light、Medium 和 Rich。`original_pius` 只出现在顶层。每个等级包含保留索引、新增内容、缺失事实、矛盾、判断和反馈，直接引用共享列表；禁止嵌套的 `original_pius` 字段。单档 `ExpansionValidation` 仍包含自己的 `original_pius`。每档对照源描述及其配置范围检查，有效新增数量必须严格递增。
 
-Levels may add different details, even details that conflict with another level, if each independently respects the source. If the source specifies no time of day, dusk in Medium and noon in Rich may both be valid. Levels need not contain earlier levels' sentences.
+只要各档独立遵守源描述，就可以加入不同细节，甚至与其他档位冲突的细节。如果源描述未指定时间，Medium 中的黄昏与 Rich 中的正午都可能有效。较高等级不要求包含较低等级的句子。
 
-`check_group_structure` requires exactly the three supported levels and unique `retry_levels`. Each level’s preservation evidence is checked against the top-level original PIU list. `check_group_revision` requires every problem level to appear in `retry_levels`, and nonblank top-level feedback whenever revisions are requested. Extra requested revision levels are allowed and consume their generation budgets. The prompt asks for actionable feedback and revisions limited to levels that need changes.
+`check_expansion_set_contract` 要求恰好包含三个受支持等级，且 `retry_levels` 不重复。每档保留证据都对照顶层原始 PIU 列表检查。每个有问题的等级必须出现在 `retry_levels` 中；只要请求修订，顶层反馈就不能为空白。允许额外要求其他等级修订，但会消耗对应生成预算。提示词要求反馈可执行，且只修订需要修改的等级。
 
-Group quality is assessed once in the parsing callback. The resulting `Decision` is reused for audit and routing. Schema errors and group structure/revision-contract errors stay inside that logical validator call's technical retry boundary; ordinary quality failures lead to generation revisions instead. Single-level source and English quality checks run after response parsing.
+校验节点准备消息并调用 `execution.execute`，得到解析后的报告。节点再显式调用纯评估函数计算 `QualityDecision`，通过 `RunStore.record_decision` 记录。`LLMModel` 处理模型通信和解析；执行层处理历史、技术重试和记录，两者都不计算或返回业务质量决策。组报告解析器通过 `check_expansion_set_contract` 检查完整性和修订一致性，让格式或契约错误的报告留在技术重试范围内。普通质量失败在操作执行结束后评估，并触发生成修订。重放复用保存的响应，在节点中重新计算决策，并避免重复记录决策事件。
 
-A single-level `insufficient_expansion_space` flag, a top-level group flag, or any flag inside the group's levels terminates the entire expansion group. Routing uses the saved decision flag rather than parsing reason strings. A terminal group response must still provide all schema fields, the shared original PIU list, exactly three levels, and unique retry levels, but its retry list and feedback may be empty; repairable-response requirements do not apply.
+单档的 `insufficient_expansion_space` 标记、组顶层标记或组内任意等级的标记，都会终止整个扩写组。路由使用已保存的决策标记，不解析原因字符串。终止型组响应仍必须提供全部 schema 字段、共享原始 PIU 列表、恰好三个等级和不重复的修订等级，但修订列表和反馈可以为空；针对可修订响应的要求不再适用。
 
-Human calibration should cover every sampling option, dropped dimensions, quantities, negation, relationships, styles, and strict constraints. Record false acceptances, false rejections, PIU segmentation disagreements, and the reasons for adjustments. Automatic pass rates do not replace those assessments.
+人工校准应覆盖每个采样选项、被丢弃的维度、数量、否定、关系、风格和严格约束。记录误通过、误拒绝、PIU 切分分歧以及调整原因。自动通过率不能代替这些评估。
