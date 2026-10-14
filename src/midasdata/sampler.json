@@ -76,12 +76,12 @@
   "specificity": [
     [
       "minimal",
-      "A brief visual request centered on one main subject or scene, with few explicitly specified details",
+      "A brief visual request focused on one main subject or scene, with at most one or two additional visual details",
       0.40
     ],
     [
       "moderate",
-      "A concise visual request with several concrete visual attributes, relationships, or constraints, without exhaustive description",
+      "A concise visual request with a few distinct visual details, typically covering two to four aspects such as appearance, action, setting, or composition, without fully specifying the scene",
       0.60
     ]
   ],

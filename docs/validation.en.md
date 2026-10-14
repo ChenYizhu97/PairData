@@ -2,9 +2,11 @@
 
 [中文](validation.md) | **English** · [Home](../README.en.md)
 
+This contract constrains the outputs of Generate Source and Expand and defines the assessment criteria for Validate Source, Validate English, and Validate Group. See the [project overview](../README.en.md) for their responsibilities and flows.
+
 Automatic validation produces auditable judgments. The model still identifies and segments PIUs: program checks enforce structure, evidence, and counts, but cannot establish that every source fact was found. Human review must cover both accepted and rejected samples.
 
-## Source descriptions
+## Validate Source: source description checks
 
 The source validator (`validate_source` / `SourceValidation`) evaluates only sampled dimensions and returns a condition result and evidence for each. The program requires exactly those condition keys, `satisfied=true`, and evidence that appears as a contiguous, verbatim substring of the description. It also requires `visual=true`, locatable `visual_evidence`, and `clean=true`. Descriptions must not contain a Markdown code fence. For `language=zh` or `mixed`, a Chinese character is required; `mixed` also requires a Latin letter. For `language=en`, a Latin letter is required and Chinese characters are disallowed. Dropped language imposes no character-language restriction. Predominance, actual English wording, and whether mixed terms describe visual content remain model judgments.
 
@@ -14,11 +16,13 @@ For `art_design`, the validator is instructed to require an explicit design form
 
 Unsatisfied conditions and missing evidence are recorded separately as `condition_not_satisfied:<dimension>` and `condition_evidence_not_found:<dimension>`.
 
-## PIUs and expansion prompts
+## Expand: PIUs and expansion requirements
 
-A PIU is a meaningful visual information unit that can independently change the depicted scene and can be located in text. Count facts rather than words. For example, one orange cat lying by a window specifies the subject, quantity, color, posture, and location. Explicit quantities, negation, relationships, styles, and requested in-image text are source constraints to preserve.
+A PIU is a distinct visual fact identifiable in the text that differentiates the depicted content. Count facts rather than words. For example, one orange cat lying by a window specifies the subject, quantity, color, posture, and location. Explicit quantities, negation, relationships, styles, and requested in-image text are source constraints to preserve.
 
-Generation and validation instructions define a PIU as a complete visual fact traceable to the text. Spatial relationships require identifiable participants; isolated relation words are not independent PIUs. Validators return evidence, indices, and judgment fields. The expansion generator plans PIUs internally and returns an `ExpansionDraft` containing only `prompt`; extra fields, including PIU lists, counts, evidence, and validation results, violate that response contract.
+Expand, Validate English, and Validate Group use the same rule for additions: an added PIU must introduce a visual distinction that the source neither expresses nor necessarily implies. Translation, paraphrasing, and contextual restatement do not count; redundant, uncertain, or generic-quality additions are also excluded. For example, in the context of a potter throwing clay, translating the wheel as a pottery wheel does not itself add a visual fact.
+
+Independently identifiable visual facts are counted separately even when expressed in one phrase, without mechanically splitting modifiers or double-counting overlapping facts. Validators return PIUs, evidence, indices, and judgment fields. The expansion generator returns an `ExpansionDraft` containing only `prompt`; extra fields, including PIU lists, counts, evidence, and validation results, violate that response contract. Expansion text should use concise, natural prose or keyword-style phrasing without repetition or filler.
 
 Model instructions and the SFT template are defined in `prompts.py`. The file's content digest participates in the recovery fingerprint.
 
@@ -32,7 +36,7 @@ English validation covers semantic preservation, contradictions, meaningful addi
 
 The ranges are initial calibration targets. Medium and Rich are configurable in TOML; Light is fixed at zero. Ranges must be strictly ordered and nonoverlapping. Source constraints always take precedence over addition targets.
 
-## Evidence and quality decisions
+## Validate English: evidence and quality decisions
 
 Each `ExpansionValidation` contains `original_pius` (`fact`, source `evidence`), `preserved_pius` (zero-based `original_index`, `output_evidence`), `missing_pius`, `contradictions`, `added_pius` (`fact`, `output_evidence`, `relevant`, `novel`, `visual`), the four quality judgments, `insufficient_expansion_space`, and `feedback`.
 
@@ -48,9 +52,9 @@ Fact distinctness is checked within each PIU list after case folding and removal
 
 A Light prompt with an empty added-PIU list may pass even if the model sets `meaningful_addition=false` to mean that nothing was added. All other semantic, format, evidence, and zero-addition checks still apply.
 
-The prompts forbid counting generic quality phrases, synonyms, or repeated adjectives as new PIUs. They require every source fact to be identified and meaningful additions to be relevant, nonduplicate, and visual. Human calibration must also check that the returned lists cover all actual additions; the program cannot infer omitted PIUs from counts alone. Related attributes, positions, or poses of one visual element may be grouped during review, while unrelated objects, lighting, and composition should remain distinct.
+Human calibration must check that returned lists cover all actual additions and do not miscount facts already expressed or necessarily implied by the source as new. Counts alone cannot reveal omitted or incorrectly segmented PIUs. For example, wooden tools and clay buckets nearby describe two independently identifiable object facts; sharing a sentence does not justify counting them as one. Modifiers and overlapping descriptions should not be mechanically split.
 
-## Group validation and termination
+## Validate Group: group checks and termination
 
 The group validator rechecks Light, Medium, and Rich in one response using a common PIU segmentation. `original_pius` appears only at the top level. Each level has preservation indices, additions, missing facts, contradictions, judgments, and feedback, and refers directly to that shared list; nested `original_pius` fields are forbidden. Single-level `ExpansionValidation` still carries its own `original_pius`. Each level is checked against the source and its configured interval, and valid addition counts must increase strictly.
 

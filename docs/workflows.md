@@ -1,18 +1,24 @@
-# 工作流与恢复
+# 工作流设计
 
 **中文** | [English](workflows.en.md) · [首页](../README.md)
 
-工作流直接使用 LangGraph `StateGraph`。每个模块按 **输入与状态 → 节点 → 路由 → build** 排列。节点返回局部状态更新，路由只决定下一个节点；编译后的图可以被多个样本复用。
+[项目概览](../README.md)定义五个模型任务及两个主工作流。这里说明它们如何映射到状态、节点、路由和构建函数，以及执行与恢复的边界。
 
-| 模块 | 含义 | 状态 | 构建入口 |
-| --- | --- | --- | --- |
-| `workflows/source_generation.py` | 生成并修订一条视觉源描述 | `SourceGenerationState` | `build_source_generation` |
-| `workflows/expansion_attempt.py` | 指定档位的一次生成与校验 | `ExpansionAttemptState` | `build_expansion_attempt` |
-| `workflows/prompt_expansion.py` | 并行扩写三档、定向修订、组校验 | `PromptExpansionState` | `build_prompt_expansion` |
+## 图的组织
+
+两个主工作流直接使用 LangGraph `StateGraph`，Expansion 内部复用一个单次扩写子图。每个模块按 **输入与状态 → 节点 → 路由 → build** 排列。节点返回局部状态更新，路由只决定下一个节点；编译后的图可以被多个样本复用。
+
+| 层级 | 模块 | 职责 | 状态 | 构建入口 |
+| --- | --- | --- | --- | --- |
+| 主工作流 | [source_generation.py](../src/midasdata/workflows/source_generation.py) | 生成、校验并修订一条 Source | `SourceGenerationState` | `build_source_generation` |
+| 主工作流 | [prompt_expansion.py](../src/midasdata/workflows/prompt_expansion.py) | 并行扩写三档、定向修订、组校验 | `PromptExpansionState` | `build_prompt_expansion` |
+| Expansion 内部子图 | [expansion_attempt.py](../src/midasdata/workflows/expansion_attempt.py) | 指定档位的一次生成与校验 | `ExpansionAttemptState` | `build_expansion_attempt` |
 
 `level` 表示 Light / Medium / Rich 扩写等级，类型为 `ExpansionLevel`；工作流状态、模型调用和 JSONL 字段统一使用这一名称。`expansion_attempt` 表示指定等级的一次生成与校验。
 
-## 源描述生成
+## Source Generation：源描述生成
+
+`draft_source` 承担 Generate Source，`validate_source` 承担 Validate Source。前者生成视觉概念与用户描述，后者取得校验报告并计算质量决策。
 
 输入是 `task_id` 和五维采样 `conditions`。运行状态包含当前 `concept`、`draft_prompt`、`draft_count`、`validation`、`decision`、`revision_feedback`、`failure_reason` 和终态 `result`。
 
@@ -26,25 +32,13 @@ flowchart TD
     C -->|技术失败或生成预算耗尽| R
 ```
 
-`planning.source_tasks` 在并发执行前按种子确定任务序列。修订沿用原采样条件和上一版概念，不重新采样。
+`planning.source_tasks` 在并发执行前按种子确定任务序列，完成业务流程中的 Sample 阶段；图接收已经确定的采样条件。修订不重新采样，通常沿用上一版概念，只有概念本身与采样条件冲突时才调整。
 
 成功替换草稿会清空当前校验、决策和反馈。新草稿的校验请求失败时，结果保留新文本，但不附带旧证据。若生成替代草稿失败，旧文本没有被替换，旧文本和对应证据仍可保留。历史响应一直保存在审计日志里。
 
-## 单次扩写尝试
+## Expansion：三档扩写编排
 
-输入包含 `task_id`、`source_prompt`、`level`、`round_number`、`draft_number`、`previous_prompt` 和 `revision_feedback`。运行状态包含本次 `draft_prompt`、`validation`、`decision`、`failure_reason` 和 `ExpansionResult`。
-
-```mermaid
-flowchart LR
-    A[initialize_attempt] --> B[draft_expansion]
-    B -->|生成成功| C[validate_expansion]
-    B -->|技术预算耗尽| D[finish_attempt]
-    C --> D
-```
-
-这个子图没有质量修订循环。父图分配生成次数，子图只返回 `passed`、`quality_failed` 或 `technical_failed`。生成失败不会调用校验器；校验失败会保留本次草稿和空的当前证据。每档只接收源描述及自己的历史输出，不接收其他档位的文本。
-
-## 三档扩写编排
+`expand_prompt` 调用单次扩写子图执行每个等级的 Expand 和 Validate English；`validate_expansion_set` 承担 Validate Group。父图管理并行汇合、修订预算和整组终态。
 
 输入是 `task_id` 和 `source_prompt`。运行状态包含 `round_number`、`pending_levels`、各档最新 `expansions`、`feedback_by_level`、`set_validation`、`set_decision`、`failure_reason` 和终态 `result`。
 
@@ -67,6 +61,22 @@ flowchart TD
 
 只有三档均通过单档校验后才调用组校验。组校验共享一次源 PIU 提取。任一作用域的 `insufficient_expansion_space` 都终止整组；终止前会等待本轮并行尝试完成。整组通过才产生 Light、Medium、Rich 三条业务记录和 SFT 记录。
 
+### 内部子图：单次扩写尝试
+
+`draft_expansion` 承担 Expand，`validate_expansion` 承担 Validate English。子图接收父图分配的一次尝试，生成文本并返回校验结果。
+
+输入包含 `task_id`、`source_prompt`、`level`、`round_number`、`draft_number`、`previous_prompt` 和 `revision_feedback`。运行状态包含本次 `draft_prompt`、`validation`、`decision`、`failure_reason` 和 `ExpansionResult`。
+
+```mermaid
+flowchart LR
+    A[initialize_attempt] --> B[draft_expansion]
+    B -->|生成成功| C[validate_expansion]
+    B -->|技术预算耗尽| D[finish_attempt]
+    C --> D
+```
+
+这个子图没有质量修订循环。父图分配生成次数，子图只返回 `passed`、`quality_failed` 或 `technical_failed`。生成失败不会调用校验器；校验发生技术失败时会保留本次草稿和空的当前证据。每档只接收源描述及自己的历史输出，不接收其他档位的文本。
+
 ## 模型调用与执行边界
 
 ```mermaid
@@ -87,6 +97,8 @@ flowchart TD
 - `execution.py` 的 `execute()` 接收一个返回可落盘字典的异步操作、输入、审计标识、解析函数和重试规则。它查询历史、执行操作、记录输出并返回解析结果，也支持普通的非模型操作。
 - `model.py` 的 `LLMModel` 只持有一个模型的配置和连接，负责请求、接口错误分类及响应解析。它不读取运行历史，也不接受质量判断函数。
 - `storage.py` 的 `RunStore` 管理运行锁，保存配置、任务、操作记录、节点计算出的质量结果和已提交结果。
+
+`schemas.py` 定义响应和落盘契约，`planning.py` 规划任务，`exports.py` 生成导出，`preview.py` 生成离线预览。CLI 处理参数和结果报告；节点不保存样本级对象状态，也不直接导出文件。
 
 `ExecutionContext` 只包含 `store`、并发信号量以及退避参数，不包含工作流状态、模型实例或业务规则。普通的初始化、轮次计算、并行结果合并和路由直接在工作流中执行。
 

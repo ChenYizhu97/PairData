@@ -2,9 +2,11 @@
 
 **中文** | [English](validation.en.md) · [首页](../README.md)
 
+这份契约约束 Generate Source 与 Expand 的输出，并定义 Validate Source、Validate English 和 Validate Group 的判断依据。业务职责和流程见[项目概览](../README.md)。
+
 自动校验产生可审计的判断。PIU 的识别和切分仍由模型完成：程序检查结构、证据和数量，但无法确认源描述中的每个事实都已被识别。人工复核应同时覆盖通过和拒绝的样本。
 
-## 源描述
+## Validate Source：源描述校验
 
 源描述校验器（`validate_source` / `SourceValidation`）只评估实际采样的维度，为每个维度返回条件结果和证据。程序要求条件键与采样维度完全一致、`satisfied=true`，且证据是描述中连续出现的原文片段。同时要求 `visual=true`、`visual_evidence` 能在原文中定位，以及 `clean=true`。描述不能包含 Markdown 代码围栏。`language=zh` 或 `mixed` 时，必须包含汉字；`mixed` 还必须包含拉丁字母。`language=en` 时，必须包含拉丁字母，且不能包含汉字。语言维度被丢弃时，不施加字符层面的语言限制。语言占比、是否为实际英文表达，以及混合语言词语是否描述视觉内容，仍由模型判断。
 
@@ -14,11 +16,13 @@
 
 条件不满足和证据未找到分别记录为 `condition_not_satisfied:<dimension>` 和 `condition_evidence_not_found:<dimension>`。
 
-## PIU 与扩写提示词
+## Expand：PIU 与扩写要求
 
-PIU 是有意义的视觉信息单元，能够独立改变画面，并能在文本中定位。计数对象是事实，而非单词。例如，“一只橘猫趴在窗边”指定了主体、数量、颜色、姿态和位置。明确的数量、否定、关系、风格和要求出现在图像中的文字，都是需要保留的源约束。
+PIU 是文本中可识别、能够区分画面内容的一项视觉事实。计数对象是事实，而非单词。例如，“一只橘猫趴在窗边”指定了主体、数量、颜色、姿态和位置。明确的数量、否定、关系、风格和要求出现在图像中的文字，都是需要保留的源约束。
 
-生成和校验指令将 PIU 定义为可追溯到文本的完整视觉事实。空间关系必须有可识别的参与对象，孤立的关系词不算独立 PIU。校验器返回证据、索引和判断字段。扩写生成器在内部规划 PIU，只返回含 `prompt` 的 `ExpansionDraft`；PIU 列表、计数、证据和校验结果等额外字段都会违反响应契约。
+Expand、Validate English 和 Validate Group 使用相同的新增规则：新增 PIU 必须引入源描述既未表达、也未必然隐含的视觉区别。翻译、同义改写和语境重述不算新增；冗余、不确定或泛化质量修饰也不计入。例如，在“陶艺师拉坯”的语境里，把“转盘”译为 pottery wheel 本身不增加视觉事实。
+
+可以独立识别的视觉事实分别计数，即使写在同一个短语中；也不能机械拆分修饰词或重复计算重叠事实。校验器返回 PIU、证据、索引和判断字段。扩写生成器只返回含 `prompt` 的 `ExpansionDraft`；PIU 列表、计数、证据和校验结果等额外字段都会违反响应契约。扩写文本应简洁自然，可以采用自然句子或关键词形式，避免重复和填充内容。
 
 模型指令和 SFT 模板定义在 `prompts.py` 中。该文件的内容摘要参与恢复指纹计算。
 
@@ -32,7 +36,7 @@ PIU 是有意义的视觉信息单元，能够独立改变画面，并能在文�
 
 这些范围是初始校准目标。Medium 和 Rich 可以在 TOML 中配置；Light 固定为零。各范围必须严格递增且互不重叠。源约束始终优先于新增数量目标。
 
-## 证据与质量决策
+## Validate English：证据与质量决策
 
 每份 `ExpansionValidation` 包含 `original_pius`（`fact`、源文本 `evidence`）、`preserved_pius`（从零开始的 `original_index`、`output_evidence`）、`missing_pius`、`contradictions`、`added_pius`（`fact`、`output_evidence`、`relevant`、`novel`、`visual`）、四项质量判断、`insufficient_expansion_space` 和 `feedback`。
 
@@ -48,9 +52,9 @@ PIU 是有意义的视觉信息单元，能够独立改变画面，并能在文�
 
 Light 的新增 PIU 列表为空时，即使模型用 `meaningful_addition=false` 表示没有新增，也可以通过。其余语义、格式、证据和零新增检查仍然适用。
 
-提示词禁止把泛化的质量修饰语、同义词或重复形容词计为新 PIU，要求识别每个源事实，并确保有意义的新增内容相关、不重复且具有视觉意义。人工校准还必须检查返回列表是否覆盖实际的全部新增内容；仅凭计数，程序无法推断遗漏的 PIU。复核时可以将同一视觉元素相关的属性、位置或姿态归为一组，而无关对象、光照和构图应分别处理。
+人工校准必须检查返回列表是否覆盖实际的全部新增内容，以及是否把源描述已表达或必然隐含的内容误计为新增；仅凭计数，程序无法推断遗漏或错误切分的 PIU。例如，“附近有木制工具和泥桶”包含两个可分别识别的对象事实，不能仅因写在同一句话里就合并计数。对修饰词和相互重叠的描述，则应避免机械拆分。
 
-## 组校验与终止
+## Validate Group：组校验与终止
 
 组校验器在一次响应中使用共同的 PIU 切分，重新检查 Light、Medium 和 Rich。`original_pius` 只出现在顶层。每个等级包含保留索引、新增内容、缺失事实、矛盾、判断和反馈，直接引用共享列表；禁止嵌套的 `original_pius` 字段。单档 `ExpansionValidation` 仍包含自己的 `original_pius`。每档对照源描述及其配置范围检查，有效新增数量必须严格递增。
 

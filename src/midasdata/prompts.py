@@ -10,9 +10,10 @@ EXPANSION_RANGES = {
 }
 
 SFT_SYSTEM = (
-    "Translate and expand source image descriptions into English "
-    "image-generation prompts according to the specified expansion level, "
-    "while strictly preserving the original semantics."
+    "Convert the source description into a concise English "
+    "image-generation prompt. Preserve all original visual facts "
+    "and constraints. Add relevant, non-redundant visual facts "
+    "according to the requested level."
 )
 
 SYSTEMS = {
@@ -36,9 +37,10 @@ SYSTEMS = {
         illustration, icon, logo, poster, packaging, or typography.
         Colloquial drawing requests alone do not imply a design format.
 
-        Sampling conditions guide generation but must not appear as labels,
-        metadata, or instructions in the user prompt.
-        Output only valid image-generation requests, without unrelated content.
+        Do not expose sampled dimension names, values, or metadata
+        as generation instructions in the user prompt.
+        Return only the requested concept and prompt fields.
+        The user prompt must contain no sampling metadata or explanations.
 
         On revision, address the feedback while retaining the visual concept
         unless the concept itself conflicts with the sampled conditions.
@@ -50,8 +52,8 @@ SYSTEMS = {
 
         Evaluate condition matching, visual content, and prompt cleanliness.
         Specificity reflects the amount and precision of explicit visual information,
-        not text length. Keywords, natural language, colloquial requests,
-        and mixed language are all valid forms.
+        not text length. All expression styles are acceptable.
+        Language must match the sampled language condition, if supplied.
 
         For sampled language conditions:
         - zh: Chinese.
@@ -82,23 +84,31 @@ SYSTEMS = {
         Preserve all explicit visual facts, including quantities, negations,
         subjects, attributes, actions, relationships, styles, and on-image text.
 
-        A PIU is an independent, complete visual fact supported by the text.
-        Spatial relationships require identifiable participants.
+        A PIU is a distinct visual fact identifiable in the text.
+
+        An added PIU must introduce a visual distinction not already
+        expressed or necessarily implied by the source.
+        Translation, paraphrasing, and contextual restatement do not count.
+
+        Count independently identifiable visual facts separately,
+        even when expressed together, without mechanically splitting
+        modifiers or overlapping facts.
+
+        Added PIUs must be relevant, novel, and visual.
+        Exclude redundant, uncertain, or generic-quality additions.
 
         Add new PIUs relative to the original source:
         - Light: exactly 0.
         - Medium: 2-4, targeting 3.
         - Rich: 5-8, targeting 6.
 
-        Additions must be relevant, visual, and non-redundant.
-        Synonyms, adjective stacking, and generic quality terms do not count.
-        Integrate details naturally without repetitive or mechanical enumeration.
+        Use concise, natural prose or keyword-style phrasing without
+        repetition or filler.
 
         Explicit source constraints take priority over expansion targets.
-        Preserve the source meaning even when constraints limit additions.
 
-        If previous_output and feedback are provided, revise accordingly.
-        Adjust added details while preserving all original visual facts.
+        If previous_output and feedback are provided, revise the previous
+        output while preserving the source facts and constraints.
 
         Return only a JSON object with a prompt field.
     """).strip(),
@@ -109,13 +119,23 @@ SYSTEMS = {
 
         Identify all original PIUs, including quantities, negations,
         subjects, attributes, actions, relationships, styles, and on-image text.
-        A PIU is an independent, complete visual fact supported by the text.
-        Spatial relationships require identifiable participants.
+
+        A PIU is a distinct visual fact identifiable in the text.
+
+        An added PIU must introduce a visual distinction not already
+        expressed or necessarily implied by the source.
+        Translation, paraphrasing, and contextual restatement do not count.
+
+        Count independently identifiable visual facts separately,
+        even when expressed together, without mechanically splitting
+        modifiers or overlapping facts.
+
+        Added PIUs must be relevant, novel, and visual.
+        Exclude redundant, uncertain, or generic-quality additions.
+
         All original PIUs must be preserved without contradiction.
 
         Identify valid added PIUs relative to the original source.
-        Additions must be relevant, visual, novel, and non-redundant.
-        Synonyms, adjective stacking, and generic quality terms do not count.
         Flag repetitive or meaningless additions.
 
         Required numbers of valid added PIUs:
@@ -123,8 +143,7 @@ SYSTEMS = {
         - Medium: 2-4.
         - Rich: 5-8.
 
-        Count only valid added PIUs. Mark the level as failed if its count
-        falls outside the required range.
+        Mark the level as failed if its count falls outside the required range.
 
         Evidence must be a continuous, verbatim substring of the source;
         output_evidence must be a continuous, verbatim substring of the output.
@@ -146,14 +165,23 @@ SYSTEMS = {
         Validate the Light, Medium, and Rich prompts against the same source.
 
         Extract original_pius once, using consistent segmentation and
-        0-based indices. A PIU is a complete, text-supported visual fact.
-        Spatial relationships require identifiable participants.
+        0-based indices.
+
+        A PIU is a distinct visual fact identifiable in the text.
+
+        An added PIU must introduce a visual distinction not already
+        expressed or necessarily implied by the source.
+        Translation, paraphrasing, and contextual restatement do not count.
+
+        Count independently identifiable visual facts separately,
+        even when expressed together, without mechanically splitting
+        modifiers or overlapping facts.
+
+        Added PIUs must be relevant, novel, and visual.
+        Exclude redundant, uncertain, or generic-quality additions.
 
         For each level, independently check preservation of all original
         PIUs, identify valid added PIUs, and report issues separately.
-
-        Added PIUs must be relevant, novel, non-redundant, and visual.
-        Synonyms, adjective stacking, and generic quality terms do not count.
 
         Required numbers of valid added PIUs relative to the source:
         - Light: 0

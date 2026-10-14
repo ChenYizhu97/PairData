@@ -1,18 +1,24 @@
-# Workflows and recovery
+# Workflow design
 
 [中文](workflows.md) | **English** · [Home](../README.en.md)
 
-Workflows use LangGraph `StateGraph` directly. Each module follows **inputs and state → nodes → routes → build**. Nodes return partial state updates, and routes only choose the next node. Compiled graphs can be reused across samples.
+The [project overview](../README.en.md) defines five model tasks and two main workflows. This document maps them to states, nodes, routes, and builders, then explains execution and recovery boundaries.
 
-| Module | Purpose | State | Builder |
-| --- | --- | --- | --- |
-| `workflows/source_generation.py` | Generate and revise one visual source description | `SourceGenerationState` | `build_source_generation` |
-| `workflows/expansion_attempt.py` | Generate and validate once at a specified level | `ExpansionAttemptState` | `build_expansion_attempt` |
-| `workflows/prompt_expansion.py` | Expand three levels in parallel, target revisions, and validate the group | `PromptExpansionState` | `build_prompt_expansion` |
+## Graph organization
+
+The two main workflows use LangGraph `StateGraph` directly, and Expansion reuses an internal single-attempt subgraph. Each module follows **inputs and state → nodes → routes → build**. Nodes return partial state updates, and routes only choose the next node. Compiled graphs can be reused across samples.
+
+| Scope | Module | Responsibility | State | Builder |
+| --- | --- | --- | --- | --- |
+| Main workflow | [source_generation.py](../src/midasdata/workflows/source_generation.py) | Generate, validate, and revise one Source | `SourceGenerationState` | `build_source_generation` |
+| Main workflow | [prompt_expansion.py](../src/midasdata/workflows/prompt_expansion.py) | Expand three levels in parallel, target revisions, and validate the group | `PromptExpansionState` | `build_prompt_expansion` |
+| Internal Expansion subgraph | [expansion_attempt.py](../src/midasdata/workflows/expansion_attempt.py) | Generate and validate once at a specified level | `ExpansionAttemptState` | `build_expansion_attempt` |
 
 `level` means the Light / Medium / Rich expansion level, with the type `ExpansionLevel`. Workflow state, model calls, and JSONL fields consistently use this name. `expansion_attempt` means one generation and validation attempt at a specified level.
 
-## Source description generation
+## Source Generation
+
+`draft_source` implements Generate Source, and `validate_source` implements Validate Source. The former produces a visual concept and user description; the latter obtains a validation report and computes a quality decision.
 
 Inputs are `task_id` and the five-dimensional sampled `conditions`. Runtime state contains the current `concept`, `draft_prompt`, `draft_count`, `validation`, `decision`, `revision_feedback`, `failure_reason`, and terminal `result`.
 
@@ -26,25 +32,13 @@ flowchart TD
     C -->|Technical failure or generation budget exhausted| R
 ```
 
-`planning.source_tasks` determines the task sequence from the seed before concurrent execution. Revisions preserve the sampled conditions and the previous concept without resampling.
+`planning.source_tasks` determines the task sequence from the seed before concurrent execution, implementing the Sample stage of the business flow. The graph receives already sampled conditions. Revisions do not resample and normally retain the previous concept, changing it only when the concept itself conflicts with the conditions.
 
 Successfully replacing a draft clears its current validation, decision, and feedback. If validation of the new draft fails technically, the result retains the new text without attaching old evidence. If generating a replacement fails, the old text has not been replaced, so it and its corresponding evidence can remain. Historical responses stay in the audit log.
 
-## Single expansion attempt
+## Expansion
 
-Inputs include `task_id`, `source_prompt`, `level`, `round_number`, `draft_number`, `previous_prompt`, and `revision_feedback`. Runtime state contains this attempt's `draft_prompt`, `validation`, `decision`, `failure_reason`, and `ExpansionResult`.
-
-```mermaid
-flowchart LR
-    A[initialize_attempt] --> B[draft_expansion]
-    B -->|Generation succeeds| C[validate_expansion]
-    B -->|Technical budget exhausted| D[finish_attempt]
-    C --> D
-```
-
-This subgraph has no quality revision loop. The parent allocates generation attempts, and the subgraph returns `passed`, `quality_failed`, or `technical_failed`. Failed generation skips validation; technical failure during validation retains the current draft with empty current evidence. Each level receives only the source description and its own previous output, without other levels' text.
-
-## Three-level expansion orchestration
+`expand_prompt` invokes the single-attempt subgraph to perform Expand and Validate English for each level; `validate_expansion_set` implements Validate Group. The parent graph manages branch convergence, revision budgets, and the group outcome.
 
 Inputs are `task_id` and `source_prompt`. Runtime state contains `round_number`, `pending_levels`, the latest per-level `expansions`, `feedback_by_level`, `set_validation`, `set_decision`, `failure_reason`, and terminal `result`.
 
@@ -67,6 +61,22 @@ The first round dispatches all three levels; later rounds dispatch only levels n
 
 Group validation runs only after all three levels pass individual validation. It uses one shared extraction of source PIUs. An `insufficient_expansion_space` flag at any scope terminates the entire group, after waiting for the current round's parallel attempts to finish. Only a passing group produces the three Light, Medium, and Rich business records and SFT records.
 
+### Internal subgraph: single expansion attempt
+
+`draft_expansion` implements Expand, and `validate_expansion` implements Validate English. The subgraph receives one attempt allocated by the parent, generates text, and returns its validation result.
+
+Inputs include `task_id`, `source_prompt`, `level`, `round_number`, `draft_number`, `previous_prompt`, and `revision_feedback`. Runtime state contains this attempt's `draft_prompt`, `validation`, `decision`, `failure_reason`, and `ExpansionResult`.
+
+```mermaid
+flowchart LR
+    A[initialize_attempt] --> B[draft_expansion]
+    B -->|Generation succeeds| C[validate_expansion]
+    B -->|Technical budget exhausted| D[finish_attempt]
+    C --> D
+```
+
+This subgraph has no quality revision loop. The parent allocates generation attempts, and the subgraph returns `passed`, `quality_failed`, or `technical_failed`. Failed generation skips validation; technical failure during validation retains the current draft with empty current evidence. Each level receives only the source description and its own previous output, without other levels' text.
+
 ## Model calls and execution boundaries
 
 ```mermaid
@@ -87,6 +97,8 @@ flowchart TD
 - `execution.py` provides `execute()`, which receives an async operation returning a persistable dictionary, inputs, audit identifiers, a parser, and retry rules. It checks history, executes the operation, records output, and returns the parsed result. It also supports ordinary operations that do not use a model.
 - `model.py` provides `LLMModel`, which holds only one model's configuration and connection and handles requests, interface error classification, and response parsing. It neither reads run history nor accepts quality assessment functions.
 - `storage.py` provides `RunStore`, which manages the run lock and saves configuration, tasks, operation records, quality decisions computed by nodes, and committed results.
+
+`schemas.py` defines response and storage contracts, `planning.py` plans tasks, `exports.py` produces exports, and `preview.py` builds offline previews. The CLI handles arguments and result reporting. Nodes do not hold per-sample object state or export files directly.
 
 `ExecutionContext` contains only `store`, a concurrency semaphore, and backoff parameters. It contains no workflow state, model instances, or business rules. Ordinary initialization, round calculations, parallel result merging, and routing happen directly in workflows.
 
