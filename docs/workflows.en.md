@@ -2,7 +2,7 @@
 
 [中文](workflows.md) | **English** · [Home](../README.en.md)
 
-The [project overview](../README.en.md) defines five model tasks and two main workflows. This document maps them to states, nodes, routes, and builders, then explains execution and recovery boundaries.
+The [project overview](../README.en.md) defines four model tasks, one programmatic group check, and two main workflows. This document maps them to states, nodes, routes, and builders, then explains execution and recovery boundaries.
 
 ## Graph organization
 
@@ -11,21 +11,21 @@ The two main workflows use LangGraph `StateGraph` directly, and Expansion reuses
 | Scope | Module | Responsibility | State | Builder |
 | --- | --- | --- | --- | --- |
 | Main workflow | [source_generation.py](../src/midasdata/workflows/source_generation.py) | Generate, validate, and revise one Source | `SourceGenerationState` | `build_source_generation` |
-| Main workflow | [prompt_expansion.py](../src/midasdata/workflows/prompt_expansion.py) | Expand three levels in parallel, target revisions, and validate the group | `PromptExpansionState` | `build_prompt_expansion` |
+| Main workflow | [prompt_expansion.py](../src/midasdata/workflows/prompt_expansion.py) | Expand three levels in parallel, regenerate failed levels, and check the group in code | `PromptExpansionState` | `build_prompt_expansion` |
 | Internal Expansion subgraph | [expansion_attempt.py](../src/midasdata/workflows/expansion_attempt.py) | Generate and validate once at a specified level | `ExpansionAttemptState` | `build_expansion_attempt` |
 
-`level` means the Light / Medium / Rich expansion level, with the type `ExpansionLevel`. Workflow state, model calls, and JSONL fields consistently use this name. `expansion_attempt` means one generation and validation attempt at a specified level.
+`level` means the Light / Medium / Rich expansion level, with the type `ExpansionLevel`. Workflow state, audit records, and business JSONL fields consistently use this name. Expansion model requests use the sampled target count; blind validation requests contain only the Source and output text. `expansion_attempt` means one generation and validation attempt at a specified level.
 
 ## Source Generation
 
-`draft_source` implements Generate Source, and `validate_source` implements Validate Source. The former produces a visual concept and user description; the latter obtains a validation report and computes a quality decision.
+`draft_source` implements Generate Source, and `blind_sampler_validation` implements blind_sampler_validation. The former produces a visual concept and user description; the latter obtains a validation report and computes a quality decision.
 
 Inputs are `task_id` and the five-dimensional sampled `conditions`. Runtime state contains the current `concept`, `draft_prompt`, `draft_count`, `validation`, `decision`, `revision_feedback`, `failure_reason`, and terminal `result`.
 
 ```mermaid
 flowchart TD
     A[initialize_source] --> B[draft_source]
-    B -->|Generation succeeds| C[validate_source]
+    B -->|Generation succeeds| C[blind_sampler_validation]
     B -->|Technical budget exhausted| R[reject_source]
     C -->|Pass| P[accept_source]
     C -->|Quality fails and fewer than 3 generations| B
@@ -38,44 +38,49 @@ Successfully replacing a draft clears its current validation, decision, and feed
 
 ## Expansion
 
-`expand_prompt` invokes the single-attempt subgraph to perform Expand and Validate English for each level; `validate_expansion_set` implements Validate Group. The parent graph manages branch convergence, revision budgets, and the group outcome.
+`expand_prompt` invokes the single-attempt subgraph for generation, semantic blind validation, and code checks at each level. The parent samples targets, manages branch convergence and regeneration of failed levels, then the programmatic `group_check` node decides group acceptance.
 
-Inputs are `task_id` and `source_prompt`. Runtime state contains `round_number`, `pending_levels`, the latest per-level `expansions`, `feedback_by_level`, `set_validation`, `set_decision`, `failure_reason`, and terminal `result`.
+Inputs are `task_id` and `source_prompt`. Runtime state contains the fixed per-level `piu_targets`, `round_number`, `pending_levels`, the latest per-level `expansions`, `group_decision`, `failure_reason`, and terminal `result`.
 
 ```mermaid
 flowchart TD
     A[initialize_expansion] --> B[prepare_round]
     B -->|Send pending levels| C[expand_prompt: single-attempt subgraph]
     C --> D[evaluate_round]
-    D -->|Individual revisions needed and budget available| B
-    D -->|All three levels pass| E[validate_expansion_set]
+    D -->|Levels failed and budget remains| B
+    D -->|All three levels pass| E[group_check]
     D -->|Termination condition met| R[reject_expansion]
-    E -->|Targeted revisions and budget available| B
     E -->|Pass| P[accept_expansion]
     E -->|Termination condition met| R
 ```
 
-The first round dispatches all three levels; later rounds dispatch only levels needing revision. `merge_expansions` merges parallel results and prevents older rounds from overwriting newer ones. LangGraph waits for all dispatched branches to finish before running `evaluate_round`, which also checks the round number.
+The first round dispatches all three levels; later rounds dispatch only failed levels. `merge_expansions` merges parallel results and prevents older rounds from overwriting newer ones. LangGraph waits for all dispatched branches to finish before running `evaluate_round`, which also checks the round number.
 
-`prepare_round` increments the round and clears previous group evidence. `dispatch_attempts` allocates the next `draft_number` for each pending level. Individual quality failures and revisions requested by group validation share a maximum of three generations per level. If any level requiring revision has no remaining budget, the entire group is rejected.
+`initialize_expansion` uniformly samples an integer from each level's configured inclusive range and stores the targets in `piu_targets`. Seeds derive from the run ID, task ID, and level, ensuring the same targets on resume.
 
-Group validation runs only after all three levels pass individual validation. It uses one shared extraction of source PIUs. An `insufficient_expansion_space` flag at any scope terminates the entire group, after waiting for the current round's parallel attempts to finish. Only a passing group produces the three Light, Medium, and Rich business records and SFT records.
+`prepare_round` increments the round. `dispatch_attempts` allocates the next `draft_number` for each pending level and supplies the original Source and fixed target count. Each level allows at most three generations. Only failed levels are generated again; a required level without remaining budget rejects the group.
+
+`group_check` calls `assess_group` to require exactly the three expected levels, matching level identifiers, nonblank prompts, and passing statuses, semantic reports, and code decisions. Failure rejects the group; success produces three business and SFT records. Its decision is audited under the `group_check` stage without a model request event.
 
 ### Internal subgraph: single expansion attempt
 
-`draft_expansion` implements Expand, and `validate_expansion` implements Validate English. The subgraph receives one attempt allocated by the parent, generates text, and returns its validation result.
+`draft_expansion` implements Expand, and `blind_expand_validation` implements blind_expand_validation. The subgraph receives one attempt allocated by the parent, generates text, and returns its validation result.
 
-Inputs include `task_id`, `source_prompt`, `level`, `round_number`, `draft_number`, `previous_prompt`, and `revision_feedback`. Runtime state contains this attempt's `draft_prompt`, `validation`, `decision`, `failure_reason`, and `ExpansionResult`.
+Inputs include `task_id`, `source_prompt`, `level`, `round_number`, `draft_number`, and `target_added_pius`. Runtime state contains this attempt's `draft_prompt`, `validation`, `decision`, `failure_reason`, and `ExpansionResult`.
 
 ```mermaid
 flowchart LR
     A[initialize_attempt] --> B[draft_expansion]
-    B -->|Generation succeeds| C[validate_expansion]
+    B -->|Generation succeeds| C[blind_expand_validation]
     B -->|Technical budget exhausted| D[finish_attempt]
     C --> D
 ```
 
-This subgraph has no quality revision loop. The parent allocates generation attempts, and the subgraph returns `passed`, `quality_failed`, or `technical_failed`. Failed generation skips validation; technical failure during validation retains the current draft with empty current evidence. Each level receives only the source description and its own previous output, without other levels' text.
+`initialize_attempt` initializes the current draft and validation state; the parent supplies the target count.
+
+Every generation request contains only `source` and `target_added_pius`, and the generator returns `ExpansionDraft(prompt)`. Blind validation requests contain only `source` and `output`. `BlindExpansionValidation` returns semantic `passed`, `reason`, and independently identified `added_pius`; the node uses `assess_expansion` to check the level's range, evidence, duplicates, and basic format, without requiring the count to equal the generation target.
+
+The parent manages generation budgets. The subgraph generates and validates once, returning `passed`, `quality_failed`, or `technical_failed`. Failed generation skips validation; technical failure during validation retains the current draft with empty current evidence. Failure reasons are saved in results and operation records.
 
 ## Model calls and execution boundaries
 
@@ -93,7 +98,7 @@ flowchart TD
 ```
 
 - `runner.py` creates generator and validator models and a shared `ExecutionContext`, passes dependencies to workflow build functions, and schedules samples.
-- Workflow nodes prepare business inputs and prompts and choose a model. After receiving a report, validation nodes explicitly call `assess_source`, `assess_expansion`, or `assess_expansion_set`, save the quality decision, and return state updates. Routes use the result and revision budget to choose the next step.
+- Workflow nodes prepare business inputs and prompts and choose a model. After receiving a report, validation nodes explicitly call `assess_source` or `assess_expansion`, save the quality decision, and return state updates. Routes use the result and generation budget to choose the next step.
 - `execution.py` provides `execute()`, which receives an async operation returning a persistable dictionary, inputs, audit identifiers, a parser, and retry rules. It checks history, executes the operation, records output, and returns the parsed result. It also supports ordinary operations that do not use a model.
 - `model.py` provides `LLMModel`, which holds only one model's configuration and connection and handles requests, interface error classification, and response parsing. It neither reads run history nor accepts quality assessment functions.
 - `storage.py` provides `RunStore`, which manages the run lock and saves configuration, tasks, operation records, quality decisions computed by nodes, and committed results.
@@ -104,9 +109,9 @@ flowchart TD
 
 A new operation has no history and starts with its first attempt. When history exists, the execution layer reuses saved outputs or restores the number of attempts already used. Operation output is persisted before parsing and validation. The model's `invoke()` returns a raw response snapshot, and `parse()` parses either new or historical responses, so malformed raw outputs remain in the audit log.
 
-The group validation node supplies `parse_set_report()`, which parses the schema and calls `check_expansion_set_contract()` to check that the three levels, revision list, and feedback are complete and consistent. It returns only the report. After `execute()` returns, the node computes a `QualityDecision` and saves it through `RunStore.record_decision()`. Replay does not append the same quality decision twice.
+After `execute()` returns a parsed blind report, its node computes the code-side `QualityDecision` and saves it through `RunStore.record_decision()`. `group_check` computes and records its decision directly. Replay does not append the same quality decision twice.
 
-JSON, schema, and group revision contract errors are technical errors. A structurally valid report that fails quality checks returns normally, and the workflow decides whether to revise generation. Deterministic checks do not guarantee that the model's semantic judgments are correct.
+JSON and schema errors are technical errors. Structurally valid reports return normally; semantic or code check failures trigger another generation: Source uses feedback for revision, while Expansion regenerates from the original Source and fixed target. Deterministic checks do not guarantee that the model's semantic judgments are correct.
 
 Each operation explicitly specifies retryable errors and its maximum attempts, defaulting to one execution. Model operations allow at most five attempts, including the first. Network errors, timeouts, HTTP 408/409/429, 5xx errors, and invalid responses can be retried; other HTTP errors stop the run. SDK retries are disabled. The execution layer uses an ordinary `for` loop with exponential backoff and jitter. Backoff waits do not occupy concurrency slots.
 

@@ -7,16 +7,18 @@ from midasdata.config import ExpansionRanges
 from midasdata.execution import ExecutionContext, ExecutionFailed
 from midasdata.sampler import load_sampler
 from midasdata.storage import RunStore
+from midasdata.validation import assess_group
 from midasdata.workflows.prompt_expansion import build_prompt_expansion
 from midasdata.workflows.source_generation import build_source_generation
 from tests.fakes import (
     PROMPTS,
     SOURCE,
     FakeModel,
+    expansion_draft,
     expansion_report,
     local_settings,
     model_input,
-    set_report,
+    request_level,
     source_report,
 )
 
@@ -42,7 +44,7 @@ class PipelineTest(unittest.IsolatedAsyncioTestCase):
         for scenario in ("exhausted", "replacement_failed", "validator_failed"):
             with self.subTest(scenario=scenario):
                 model = FakeModel()
-                model.responses[("validate_source", None)] = [invalid] * 3
+                model.responses[("blind_sampler_validation", None)] = [invalid] * 3
                 if scenario != "exhausted":
                     model.responses[("generate", None)] = [
                         {"concept": "first", "prompt": SOURCE},
@@ -50,7 +52,7 @@ class PipelineTest(unittest.IsolatedAsyncioTestCase):
                         if scenario == "replacement_failed"
                         else {"concept": "second", "prompt": "两只猫"},
                     ]
-                    model.responses[("validate_source", None)] = [
+                    model.responses[("blind_sampler_validation", None)] = [
                         invalid,
                         ExecutionFailed("offline"),
                     ]
@@ -77,25 +79,22 @@ class PipelineTest(unittest.IsolatedAsyncioTestCase):
                     self.assertIsNone(result.details.validation)
                     self.assertIsNone(result.details.decision)
 
-    async def test_targeted_revisions_share_one_budget(self):
+    async def test_failed_levels_regenerate_with_fixed_targets(self):
         for exhaust in (False, True):
             with self.subTest(exhaust=exhaust):
                 model = FakeModel()
-                invalid = expansion_report("rich")
-                invalid["missing_pius"] = ["cat"]
-                model.responses[("validate_english", "rich")] = [invalid]
-                revise = set_report()
-                revise["retry_levels"], revise["feedback"] = ["rich"], "Revise lighting."
-                model.responses[("validate_group", None)] = [revise] * (2 if exhaust else 1)
+                semantics = expansion_report("rich")
+                semantics.update(passed=False, reason="Restore the cat.")
+                too_few = expansion_report("rich")
+                too_few["added_pius"].pop()
+                model.responses[("blind_expand_validation", "rich")] = [semantics, too_few]
+                if exhaust:
+                    model.responses[("blind_expand_validation", "rich")].append(too_few)
+                execution = self.execution()
                 result = (
                     await build_prompt_expansion(
-                        model, model, self.execution(), ExpansionRanges()
-                    ).ainvoke(
-                        {
-                            "task_id": "budget",
-                            "source_prompt": SOURCE,
-                        }
-                    )
+                        model, model, execution, ExpansionRanges()
+                    ).ainvoke({"task_id": "budget", "source_prompt": SOURCE})
                 )["result"]
                 self.assertEqual(
                     {
@@ -106,108 +105,151 @@ class PipelineTest(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(result.status, "rejected" if exhaust else "passed")
                 if exhaust:
-                    self.assertEqual(result.reason, "group_quality_budget_exhausted")
+                    self.assertEqual(result.reason, "quality_budget_exhausted")
                     self.assertEqual(result.records, [])
+                    self.assertIsNone(result.details.group_decision)
                 else:
                     self.assertEqual(
-                        [record.prompt for record in result.records], list(PROMPTS.values())
+                        [item.prompt for item in result.records], list(PROMPTS.values())
                     )
-                revisions = [
-                    payload
-                    for stage, payload in model.calls
-                    if stage == "expand" and payload["previous_output"]
-                ]
-                self.assertTrue(
-                    all(payload["previous_output"] == PROMPTS["rich"] for payload in revisions)
+                    self.assertTrue(result.details.group_decision.passed)
+                generation_inputs = {}
+                for stage, payload in model.calls:
+                    if stage == "expand":
+                        self.assertEqual(set(payload), {"source", "target_added_pius"})
+                        level = request_level(stage, payload)
+                        interval = getattr(ExpansionRanges(), level)
+                        target = payload["target_added_pius"]
+                        self.assertIs(type(target), int)
+                        self.assertLessEqual(interval.min, target)
+                        self.assertLessEqual(target, interval.max)
+                        self.assertEqual(payload, generation_inputs.setdefault(level, payload))
+                    elif stage == "blind_expand_validation":
+                        self.assertEqual(set(payload), {"source", "output"})
+                    else:
+                        self.fail(f"unexpected model stage: {stage}")
+                self.assertFalse(
+                    any(
+                        event["stage"] == "group_check" and event["event"] == "request"
+                        for event in execution.store.events
+                    )
                 )
 
-    async def test_insufficient_space_terminates_the_whole_set(self):
-        for scope in ("individual", "set", "nested"):
-            with self.subTest(scope=scope):
+    async def test_group_check_requires_all_three_passed_levels(self):
+        model = FakeModel()
+        execution = self.execution()
+        result = (
+            await build_prompt_expansion(model, model, execution, ExpansionRanges()).ainvoke(
+                {"task_id": "group", "source_prompt": SOURCE}
+            )
+        )["result"]
+        levels = result.details.levels
+        self.assertTrue(assess_group(levels).passed)
+        self.assertEqual(len(model.calls), 6)
+        self.assertTrue(
+            any(item.target_added_pius != item.decision.added_count for item in levels.values())
+        )
+        for stage, payload in model.calls:
+            if stage == "expand":
+                level = request_level(stage, payload)
+                self.assertEqual(levels[level].target_added_pius, payload["target_added_pius"])
+        for level in PROMPTS:
+            missing = {key: value for key, value in levels.items() if key != level}
+            self.assertFalse(assess_group(missing).passed)
+            failed = {
+                **levels,
+                level: levels[level].model_copy(update={"status": "quality_failed"}),
+            }
+            self.assertFalse(assess_group(failed).passed)
+            no_decision = {**levels, level: levels[level].model_copy(update={"decision": None})}
+            self.assertFalse(assess_group(no_decision).passed)
+        self.assertEqual(
+            sum(event["stage"] == "group_check" for event in execution.store.events), 1
+        )
+        configured = ExpansionRanges(medium={"min": 2, "max": 2}, rich={"min": 5, "max": 5})
+        configured_result = (
+            await build_prompt_expansion(model, model, self.execution(), configured).ainvoke(
+                {"task_id": "configured", "source_prompt": SOURCE}
+            )
+        )["result"]
+        self.assertEqual(configured_result.status, "passed")
+        self.assertEqual(
+            {
+                level: item.target_added_pius
+                for level, item in configured_result.details.levels.items()
+            },
+            {"light": 0, "medium": 2, "rich": 5},
+        )
+
+    async def test_failed_attempt_retains_only_current_draft_evidence(self):
+        for failure in ("generation", "validation"):
+            with self.subTest(failure=failure):
                 model = FakeModel()
-                if scope == "individual":
-                    report = expansion_report("rich")
-                    report["insufficient_expansion_space"] = True
-                    model.responses[("validate_english", "rich")] = [report]
+                invalid = expansion_report("medium")
+                invalid.update(passed=False, reason="Restore the source.")
+                model.responses[("blind_expand_validation", "medium")] = [invalid]
+                if failure == "generation":
+                    model.responses[("expand", "medium")] = [
+                        expansion_draft("medium"),
+                        ExecutionFailed("offline"),
+                    ]
                 else:
-                    report = set_report()
-                    target = report if scope == "set" else report["levels"]["rich"]
-                    target["insufficient_expansion_space"] = True
-                    model.responses[("validate_group", None)] = [report]
+                    model.responses[("blind_expand_validation", "medium")].append(
+                        ExecutionFailed("offline")
+                    )
                 result = (
                     await build_prompt_expansion(
                         model, model, self.execution(), ExpansionRanges()
-                    ).ainvoke(
-                        {
-                            "task_id": scope,
-                            "source_prompt": SOURCE,
-                        }
-                    )
+                    ).ainvoke({"task_id": failure, "source_prompt": SOURCE})
                 )["result"]
-                self.assertEqual(result.reason, "insufficient_expansion_space")
-                self.assertEqual(result.records, [])
-                self.assertEqual(sum(stage == "expand" for stage, _ in model.calls), 3)
-                if scope == "individual":
-                    self.assertFalse(any(stage == "validate_group" for stage, _ in model.calls))
+                self.assertEqual(result.status, "rejected")
+                self.assertIsNone(result.details.group_decision)
+                attempt = result.details.levels["medium"]
+                self.assertIsNone(attempt.validation)
+                self.assertIsNone(attempt.decision)
+                self.assertEqual(attempt.status, "technical_failed")
+                self.assertEqual(
+                    attempt.prompt, "" if failure == "generation" else PROMPTS["medium"]
+                )
+                self.assertEqual(
+                    sum(
+                        stage == "blind_expand_validation"
+                        and request_level(stage, payload) == "medium"
+                        for stage, payload in model.calls
+                    ),
+                    1 if failure == "generation" else 2,
+                )
 
-    async def test_new_round_clears_old_set_evidence_and_skips_failed_draft_validation(self):
-        model = FakeModel()
-        revise = set_report()
-        revise["retry_levels"], revise["feedback"] = ["medium"], "Revise the setting."
-        model.responses[("validate_group", None)] = [revise]
-        model.responses[("expand", "medium")] = [
-            {"prompt": PROMPTS["medium"]},
-            ExecutionFailed("offline"),
-        ]
-        result = (
-            await build_prompt_expansion(model, model, self.execution(), ExpansionRanges()).ainvoke(
-                {
-                    "task_id": "failure",
-                    "source_prompt": SOURCE,
-                }
-            )
-        )["result"]
-        self.assertEqual(result.status, "rejected")
-        self.assertIsNone(result.details.group_validation)
-        self.assertIsNone(result.details.group_decision)
-        self.assertIsNone(result.details.levels["medium"].validation)
-        self.assertEqual(
-            sum(
-                stage == "validate_english" and payload["level"] == "medium"
-                for stage, payload in model.calls
-            ),
-            1,
-        )
-
-    async def test_parallel_attempts_join_before_set_validation(self):
+    async def test_parallel_attempts_join_before_group_check(self):
         started = asyncio.Event()
         release = asyncio.Event()
 
         class BlockingModel(FakeModel):
             async def invoke(self, inputs, schema):
                 stage, payload = model_input(inputs)
-                if stage == "expand" and payload["level"] == "medium":
+                if stage == "expand" and request_level(stage, payload) == "medium":
                     started.set()
                     await release.wait()
                 return await super().invoke(inputs, schema)
 
         model = BlockingModel()
+        execution = self.execution()
         task = asyncio.create_task(
-            build_prompt_expansion(model, model, self.execution(), ExpansionRanges()).ainvoke(
-                {
-                    "task_id": "parallel",
-                    "source_prompt": SOURCE,
-                }
+            build_prompt_expansion(model, model, execution, ExpansionRanges()).ainvoke(
+                {"task_id": "parallel", "source_prompt": SOURCE}
             )
         )
         try:
             await asyncio.wait_for(started.wait(), 3)
             for _ in range(30):
-                if sum(stage == "validate_english" for stage, _ in model.calls) == 2:
+                if sum(stage == "blind_expand_validation" for stage, _ in model.calls) == 2:
                     break
                 await asyncio.sleep(0.01)
-            self.assertEqual(sum(stage == "validate_english" for stage, _ in model.calls), 2)
-            self.assertFalse(any(stage == "validate_group" for stage, _ in model.calls))
+            self.assertEqual(sum(stage == "blind_expand_validation" for stage, _ in model.calls), 2)
+            self.assertFalse(
+                any(event["stage"] == "group_check" for event in execution.store.events)
+            )
+            self.assertFalse(task.done())
             release.set()
             self.assertEqual((await asyncio.wait_for(task, 3))["result"].status, "passed")
         finally:

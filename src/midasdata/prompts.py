@@ -1,13 +1,10 @@
-"""Generation, validation, and SFT instructions for visual prompts."""
+"""视觉提示词的生成、盲校验和 SFT 指令。
+
+Generation, blind validation, and SFT instructions for visual prompts.
+"""
 
 import json
 from textwrap import dedent
-
-EXPANSION_RANGES = {
-    "light": (0, 0),
-    "medium": (2, 4),
-    "rich": (5, 8),
-}
 
 SFT_SYSTEM = (
     "Convert the source description into a concise English "
@@ -45,8 +42,7 @@ SYSTEMS = {
         On revision, address the feedback while retaining the visual concept
         unless the concept itself conflicts with the sampled conditions.
     """).strip(),
-
-    "validate_source": dedent("""
+    "blind_sampler_validation": dedent("""
         Validate the source image-generation prompt against its sampled conditions.
         Check only supplied dimensions; omitted dimensions are unrestricted.
 
@@ -76,136 +72,78 @@ SYSTEMS = {
         unrelated explanations, and non-image-generation requests.
         Provide specific, actionable feedback without rewriting the prompt.
     """).strip(),
-
     "expand": dedent("""
-        Convert the source description into a concise English image-generation
-        prompt at the requested expansion level.
+        Convert the source description into a concise English
+        image-generation prompt.
 
-        Preserve all explicit visual facts, including quantities, negations,
-        subjects, attributes, actions, relationships, styles, and on-image text.
+        Preserve all original visual facts and constraints, including
+        quantities, negations, subjects, attributes, actions,
+        relationships, styles, and on-image text.
 
-        A PIU is a distinct visual fact identifiable in the text.
+        A PIU is a distinct, independently identifiable visual fact.
+        Add exactly target_added_pius new PIUs relative to the source.
 
-        An added PIU must introduce a visual distinction not already
+        Each addition must introduce a visual distinction not already
         expressed or necessarily implied by the source.
-        Translation, paraphrasing, and contextual restatement do not count.
+        Translation and paraphrasing do not count as additions.
 
         Count independently identifiable visual facts separately,
-        even when expressed together, without mechanically splitting
-        modifiers or overlapping facts.
+        even when expressed together, without splitting overlapping
+        facts or modifiers merely to increase the count.
 
-        Added PIUs must be relevant, novel, and visual.
-        Exclude redundant, uncertain, or generic-quality additions.
+        Additions must be relevant, novel, and non-redundant.
+        Avoid generic quality terms, repetitive details, and filler.
+        Use concise natural prose or keyword-style phrasing.
 
-        Add new PIUs relative to the original source:
-        - Light: exactly 0.
-        - Medium: 2-4, targeting 3.
-        - Rich: 5-8, targeting 6.
+        When target_added_pius is 0, preserve the source without
+        introducing new visual facts.
+        Explicit source constraints always take priority.
 
-        Use concise, natural prose or keyword-style phrasing without
-        repetition or filler.
-
-        Explicit source constraints take priority over expansion targets.
-
-        If previous_output and feedback are provided, revise the previous
-        output while preserving the source facts and constraints.
-
-        Return only a JSON object with a prompt field.
+        Return only prompt, without a PIU list, counts, or explanations.
     """).strip(),
+    "blind_expand_validation": dedent("""
+        Validate the English image-generation prompt against its source.
+        Check semantic preservation, contradictions, visual additions,
+        and output format.
 
-    "validate_english": dedent("""
-        Validate the English image-generation prompt against the source
-        and requested expansion level.
+        A PIU is a distinct, independently identifiable visual fact.
 
-        Identify all original PIUs, including quantities, negations,
-        subjects, attributes, actions, relationships, styles, and on-image text.
+        Check preservation of all original PIUs, including quantities, negations,
+        subjects, attributes, actions, relationships, styles,
+        and on-image text. Do not return a separate original PIU list.
 
-        A PIU is a distinct visual fact identifiable in the text.
-
-        An added PIU must introduce a visual distinction not already
+        Identify every added PIU relative to the source.
+        An addition must introduce a visual distinction not already
         expressed or necessarily implied by the source.
-        Translation, paraphrasing, and contextual restatement do not count.
+        Translation and paraphrasing do not count as additions.
 
         Count independently identifiable visual facts separately,
-        even when expressed together, without mechanically splitting
-        modifiers or overlapping facts.
+        even when expressed together, without splitting overlapping
+        facts or modifiers merely to increase the count.
 
-        Added PIUs must be relevant, novel, and visual.
-        Exclude redundant, uncertain, or generic-quality additions.
+        Report all valid added PIUs, regardless of their number.
+        Do not merge independent facts, omit additions, or duplicate
+        the same fact. Redundant, uncertain, or meaningless additions
+        must fail the semantic check and be explained in reason.
 
-        All original PIUs must be preserved without contradiction.
-
-        Identify valid added PIUs relative to the original source.
-        Flag repetitive or meaningless additions.
-
-        Required numbers of valid added PIUs:
-        - Light: exactly 0.
-        - Medium: 2-4.
-        - Rich: 5-8.
-
-        Mark the level as failed if its count falls outside the required range.
-
-        Evidence must be a continuous, verbatim substring of the source;
-        output_evidence must be a continuous, verbatim substring of the output.
-        Preserve exact case and punctuation. Do not translate or combine
-        fragments. Each fragment must support the corresponding PIU.
-        original_index must use 0-based indices and cover all original PIUs
-        without duplicates.
-
-        For Light, an empty added list is valid; set meaningful_addition
-        to true when no meaningless additions exist.
-        If source constraints prevent sufficient expansion, mark
-        insufficient_expansion_space.
-
-        Reject explanations, labels, or code outside the English image prompt.
-        Provide specific, actionable feedback without rewriting the prompt.
-    """).strip(),
-
-    "validate_group": dedent("""
-        Validate the Light, Medium, and Rich prompts against the same source.
-
-        Extract original_pius once, using consistent segmentation and
-        0-based indices.
-
-        A PIU is a distinct visual fact identifiable in the text.
-
-        An added PIU must introduce a visual distinction not already
-        expressed or necessarily implied by the source.
-        Translation, paraphrasing, and contextual restatement do not count.
-
-        Count independently identifiable visual facts separately,
-        even when expressed together, without mechanically splitting
-        modifiers or overlapping facts.
-
-        Added PIUs must be relevant, novel, and visual.
-        Exclude redundant, uncertain, or generic-quality additions.
-
-        For each level, independently check preservation of all original
-        PIUs, identify valid added PIUs, and report issues separately.
-
-        Required numbers of valid added PIUs relative to the source:
-        - Light: 0
-        - Medium: 2-4
-        - Rich: 5-8
-
-        Each level must satisfy its range. Higher levels need not include
-        lower-level additions, but all must remain consistent with the source.
-        Do not judge expansion by word count.
-
-        Evidence must be a continuous, verbatim substring of the source;
+        Each added PIU has only fact and output_evidence, without an ID or index.
         output_evidence must be a continuous, verbatim substring of the
-        corresponding output. Preserve exact case and punctuation.
-        Do not translate or combine fragments.
-        original_index must cover all original PIUs without duplicates.
+        output text, preserving exact case and punctuation.
+        Do not translate, combine, or invent evidence.
+        Evidence spans may overlap when supporting distinct PIUs.
 
-        Light with no additions is valid; set meaningful_addition to true
-        when no meaningless additions exist.
-        Mark insufficient_expansion_space when source constraints prevent
-        the required additions.
+        An empty added PIU list is valid when no additions exist.
+        English wording is required, except original proper names and
+        requested on-image text that may retain their source language.
+        Reject unrelated explanations, labels, or code in the output.
 
-        On failure, retry_levels must include every failing level;
-        otherwise it must be empty. Provide actionable feedback without
-        generating replacement prompts.
+        Return only passed, reason, and added_pius.
+        Set passed to true only if source meaning and constraints are
+        fully preserved, without contradictions, and additions are
+        meaningful, relevant, visual, and non-redundant.
+        Explain the semantic judgment in reason, with actionable issues
+        on failure. Return identified added PIUs even when passed is false.
+        Do not judge counts or expansion levels, or rewrite the prompt.
     """).strip(),
 }
 

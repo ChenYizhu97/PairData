@@ -103,7 +103,7 @@ async def draft_source(
     }
 
 
-async def validate_source(
+async def blind_sampler_validation(
     state: SourceGenerationState,
     *,
     validator: LLMModel,
@@ -116,13 +116,16 @@ async def validate_source(
         "prompt": state["draft_prompt"],
     }
     metadata = operation_metadata(
-        state["task_id"], "validate_source", model=validator.name, draft_number=state["draft_count"]
+        state["task_id"],
+        "blind_sampler_validation",
+        model=validator.name,
+        draft_number=state["draft_count"],
     )
     try:
         report = await execute(
             partial(
                 validator.invoke,
-                messages("validate_source", payload, SourceValidation),
+                messages("blind_sampler_validation", payload, SourceValidation),
                 SourceValidation,
             ),
             context=execution,
@@ -176,8 +179,10 @@ def reject_source(state: SourceGenerationState) -> dict:
 
 # 路由：只决定下一个节点，不产生状态更新或副作用。
 # Routes select the next node without state updates or side effects.
-def after_source_draft(state: SourceGenerationState) -> Literal["validate_source", "reject_source"]:
-    return "reject_source" if state["failure_reason"] is not None else "validate_source"
+def after_source_draft(
+    state: SourceGenerationState,
+) -> Literal["blind_sampler_validation", "reject_source"]:
+    return "reject_source" if state["failure_reason"] is not None else "blind_sampler_validation"
 
 
 def after_source_validation(
@@ -208,15 +213,17 @@ def build_source_generation(
         partial(draft_source, generator=generator, execution=execution, sampler=sampler),
     )
     graph.add_node(
-        "validate_source",
-        partial(validate_source, validator=validator, execution=execution, sampler=sampler),
+        "blind_sampler_validation",
+        partial(
+            blind_sampler_validation, validator=validator, execution=execution, sampler=sampler
+        ),
     )
     graph.add_node("accept_source", accept_source)
     graph.add_node("reject_source", reject_source)
     graph.add_edge(START, "initialize_source")
     graph.add_edge("initialize_source", "draft_source")
     graph.add_conditional_edges("draft_source", after_source_draft)
-    graph.add_conditional_edges("validate_source", after_source_validation)
+    graph.add_conditional_edges("blind_sampler_validation", after_source_validation)
     graph.add_edge("accept_source", END)
     graph.add_edge("reject_source", END)
     return graph.compile()

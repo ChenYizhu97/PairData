@@ -31,23 +31,20 @@ async def execute_tasks(queue: asyncio.Queue, store: RunStore, workflow):
     command = store.manifest["workflow"]
     while True:
         task = await queue.get()
-        try:
-            if task is None:
-                return
-            inputs = {"task_id": task["id"]}
-            if command == "generate":
-                inputs["conditions"] = task["sample"]
-            else:
-                inputs["source_prompt"] = task["prompt"]
-            completed = await workflow.ainvoke(inputs, config={"recursion_limit": 100})
-            result = TaskResult.model_validate(completed["result"])
-            result.source = {
-                **task,
-                "origin": "llm" if command == "generate" else store.manifest["request"]["input"],
-            }
-            store.commit(result)
-        finally:
-            queue.task_done()
+        if task is None:
+            return
+        inputs = {"task_id": task["id"]}
+        if command == "generate":
+            inputs["conditions"] = task["sample"]
+        else:
+            inputs["source_prompt"] = task["prompt"]
+        completed = await workflow.ainvoke(inputs, config={"recursion_limit": 100})
+        result = TaskResult.model_validate(completed["result"])
+        result.source = {
+            **task,
+            "origin": "llm" if command == "generate" else store.manifest["request"]["input"],
+        }
+        store.commit(result)
 
 
 async def process_run(store: RunStore, settings: RunSettings, sampler: dict | None):

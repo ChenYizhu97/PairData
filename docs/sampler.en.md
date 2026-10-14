@@ -2,7 +2,7 @@
 
 [中文](sampler.md) | **English** · [Home](../README.en.md)
 
-Sampling determines the input conditions and planned distribution for Source Generation. Generate Source uses these conditions to simulate natural, varied user image requests; Validate Source checks only the retained conditions. Sampling covers different subjects, expressions, and languages, while generation and validation jointly assess whether the text is natural.
+Sampling determines the input conditions and planned distribution for Source Generation. Generate Source uses these conditions to simulate natural, varied user image requests; blind_sampler_validation checks only the retained conditions. Sampling covers different subjects, expressions, and languages, while generation and validation jointly assess whether the text is natural.
 
 ## Dimensions and defaults
 

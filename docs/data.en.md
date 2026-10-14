@@ -59,14 +59,16 @@ The runner, execution layer and workflow nodes write through `RunStore` synchron
 | Workflow | `records` | `details` |
 | --- | --- | --- |
 | `generate` | `SourcePromptRecord` list | `SourceGenerationDetails`: draft `prompt`, current `validation` and `decision`, `generation_attempt`, and `feedback` |
-| `expand` | `ExpandedPromptRecord` list | `PromptExpansionDetails`: `round`, `levels`, current `group_validation` and `group_decision`, and per-level `feedback` |
+| `expand` | `ExpandedPromptRecord` list | `PromptExpansionDetails`: `round`, `levels`, and programmatic `group_decision` |
 
-Each entry in `PromptExpansionDetails.levels` is an `ExpansionResult` with level, round, generation attempt, status, prompt, optional validation and decision, and reason. Its status is `passed`, `quality_failed`, or `technical_failed`. These are single-level statuses; the enclosing sample status is `passed` or `rejected`.
+Each entry in `PromptExpansionDetails.levels` is an `ExpansionResult` with level, round, generation attempt, sampled `target_added_pius`, status, prompt, optional blind validation and code decision, and reason. Its status is `passed`, `quality_failed`, or `technical_failed`. These are single-level statuses; the enclosing sample status is `passed` or `rejected`.
 
 Records and details from the wrong workflow and unknown nested fields are rejected. `source` allows extensible provenance metadata. Storage, export, and the review script read typed models; preview generation serializes them to embedded JSON.
 
-Optional detail fields are fully serialized with their defaults, including `null` for absent validation and decisions. Dropped dimensions are omitted only from business records' `sample`. The decision's `insufficient_expansion_space` flag is saved together with the original validation and rejection reason. Artifacts are read and written using the current contracts in `schemas.py`.
+Optional detail fields are fully serialized with their defaults, including `null` for absent validation and decisions. Dropped dimensions are omitted only from business records' `sample`. The blind report stores semantic `passed`, `reason`, and independently identified `added_pius`; the code decision stores final `passed`, rule failure reasons, and `added_count`. The count is the blind list length; evidence or duplicate problems still reject the list. Each PIU contains only `fact` and `output_evidence`, without an ID or index. Artifacts are read and written using the current contracts in `schemas.py`.
 
-When a new draft replaces old text, its current validation and decision are cleared until that draft is validated. Previous evidence remains in `audit.jsonl`. Entering a new expansion round also clears the previous group validation and decision, while carrying revision feedback to the requested levels.
+When a new draft replaces old text, its current validation and decision are cleared until that draft is validated. Previous evidence remains in `audit.jsonl`. Every expansion generation uses the original Source and initially sampled target count; `reason` records the explanation for the result. A single group decision is produced after all three levels pass.
+
+Teacher generation requests use an integer `target_added_pius` sampled from the level's range, without sending the range; generator responses contain only `prompt`. Request audits and per-level results retain the target count, which is absent from blind validation requests. Business records and SFT user messages retain `level` as the training target. `group_check` produces only a programmatic quality decision event, with no model response.
 
 Software and workflow versions are included in manifests and recovery fingerprints. Internal graph states live beside their workflow nodes, not in `schemas.py`.

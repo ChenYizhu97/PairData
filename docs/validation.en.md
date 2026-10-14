@@ -2,13 +2,11 @@
 
 [中文](validation.md) | **English** · [Home](../README.en.md)
 
-This contract constrains the outputs of Generate Source and Expand and defines the assessment criteria for Validate Source, Validate English, and Validate Group. See the [project overview](../README.en.md) for their responsibilities and flows.
+Models judge semantics and identify added facts; code enforces deterministically computable rules. An expansion passes only when its blind semantic judgment and code checks both pass. `group_check` decides group acceptance. See the [project overview](../README.en.md) for the business flow.
 
-Automatic validation produces auditable judgments. The model still identifies and segments PIUs: program checks enforce structure, evidence, and counts, but cannot establish that every source fact was found. Human review must cover both accepted and rejected samples.
+## blind_sampler_validation: source description checks
 
-## Validate Source: source description checks
-
-The source validator (`validate_source` / `SourceValidation`) evaluates only sampled dimensions and returns a condition result and evidence for each. The program requires exactly those condition keys, `satisfied=true`, and evidence that appears as a contiguous, verbatim substring of the description. It also requires `visual=true`, locatable `visual_evidence`, and `clean=true`. Descriptions must not contain a Markdown code fence. For `language=zh` or `mixed`, a Chinese character is required; `mixed` also requires a Latin letter. For `language=en`, a Latin letter is required and Chinese characters are disallowed. Dropped language imposes no character-language restriction. Predominance, actual English wording, and whether mixed terms describe visual content remain model judgments.
+The source validator (`blind_sampler_validation` / `SourceValidation`) evaluates only sampled dimensions and returns a condition result and evidence for each. The program requires exactly those condition keys, `satisfied=true`, and evidence that appears as a contiguous, verbatim substring of the description. It also requires `visual=true`, locatable `visual_evidence`, and `clean=true`. Descriptions must not contain a Markdown code fence. For `language=zh` or `mixed`, a Chinese character is required; `mixed` also requires a Latin letter. For `language=en`, a Latin letter is required and Chinese characters are disallowed. Dropped language imposes no character-language restriction. Predominance, actual English wording, and whether mixed terms describe visual content remain model judgments.
 
 Prompts allow keywords, natural language, and colloquial image requests according to `expression`; Chinese, English, and mixed Chinese/English are independently controlled by `language`. For example, `帮我画一只狗` asks for a dog image, while `养狗好吗` asks whether owning a dog is a good idea. The validator is instructed to reject unrelated conversation, garbled content, explanations, and copied sampling labels. Mixed-language words must describe visual content.
 
@@ -16,54 +14,79 @@ For `art_design`, the validator is instructed to require an explicit design form
 
 Unsatisfied conditions and missing evidence are recorded separately as `condition_not_satisfied:<dimension>` and `condition_evidence_not_found:<dimension>`.
 
-## Expand: PIUs and expansion requirements
+## Expand: generation toward a sampled target count
 
-A PIU is a distinct visual fact identifiable in the text that differentiates the depicted content. Count facts rather than words. For example, one orange cat lying by a window specifies the subject, quantity, color, posture, and location. Explicit quantities, negation, relationships, styles, and requested in-image text are source constraints to preserve.
+Python uniformly samples an integer from each level's inclusive range. Every generator request contains only `source` and the fixed `target_added_pius`.
 
-Expand, Validate English, and Validate Group use the same rule for additions: an added PIU must introduce a visual distinction that the source neither expresses nor necessarily implies. Translation, paraphrasing, and contextual restatement do not count; redundant, uncertain, or generic-quality additions are also excluded. For example, in the context of a potter throwing clay, translating the wheel as a pottery wheel does not itself add a visual fact.
-
-Independently identifiable visual facts are counted separately even when expressed in one phrase, without mechanically splitting modifiers or double-counting overlapping facts. Validators return PIUs, evidence, indices, and judgment fields. The expansion generator returns an `ExpansionDraft` containing only `prompt`; extra fields, including PIU lists, counts, evidence, and validation results, violate that response contract. Expansion text should use concise, natural prose or keyword-style phrasing without repetition or filler.
-
-Model instructions and the SFT template are defined in `prompts.py`. The file's content digest participates in the recovery fingerprint.
-
-English validation covers semantic preservation, contradictions, meaningful additions, and prompt format. Original proper names and requested in-image text may remain in their source language. Explanations, level labels, and code blocks are forbidden. The program combines the validator's `valid_format` judgment with checks for a Latin letter, no code fence, and no leading `light:`, `medium:`, `rich:`, or `prompt:` label.
-
-| Level | Default added PIUs |
+| Internal level | Default added PIU range |
 | --- | --- |
 | Light | 0 |
 | Medium | 2–4 |
 | Rich | 5–8 |
 
-The ranges are initial calibration targets. Medium and Rich are configurable in TOML; Light is fixed at zero. Ranges must be strictly ordered and nonoverlapping. Source constraints always take precedence over addition targets.
+Light is fixed at zero; Medium and Rich are configurable, with strictly increasing, nonoverlapping ranges. Source facts and constraints take precedence over addition targets. Counts must not be met by changing quantities, negation, relationships, styles, or requested in-image text.
 
-## Validate English: evidence and quality decisions
+The random seed derives from the run ID, task ID, and level. Each level is sampled once during workflow initialization; regeneration, technical retries, and resume all preserve that target. Request audits and per-level results save the target.
 
-Each `ExpansionValidation` contains `original_pius` (`fact`, source `evidence`), `preserved_pius` (zero-based `original_index`, `output_evidence`), `missing_pius`, `contradictions`, `added_pius` (`fact`, `output_evidence`, `relevant`, `novel`, `visual`), the four quality judgments, `insufficient_expansion_space`, and `feedback`.
+The generator's `ExpansionDraft` contains only the expanded text in `prompt`:
 
-The program requires:
+```json
+{
+  "prompt": "A cat on a chair in daylight."
+}
+```
 
-- Semantic preservation and no-contradiction judgments to pass, with empty missing-fact and contradiction lists.
-- A nonempty original PIU list, distinct fact descriptions, and source evidence that can be located verbatim.
-- Preservation indices covering every original PIU exactly once, without gaps, duplicates, or out-of-range values; every output evidence string must appear in the English prompt.
-- Distinct added facts, locatable output evidence, and `relevant`, `novel`, and `visual` all true for every addition.
-- The number of valid additions to fall within the current level's interval.
+The generation target guides expansion; acceptance still uses the level's range. For example, when Medium draws 3, blind counts of 2, 3, or 4 all satisfy the count requirement.
 
-Fact distinctness is checked within each PIU list after case folding and removal of whitespace and punctuation, including underscores: `orange fur`, `orange-fur`, and `ORANGE_FUR` count as the same fact. Evidence location is case-sensitive. Fact/evidence correspondence and novelty relative to the source still depend on the model's judgments. An unsupported claim of success cannot override failed evidence checks.
+## blind_expand_validation: independent semantic assessment
 
-A Light prompt with an empty added-PIU list may pass even if the model sets `meaningful_addition=false` to mean that nothing was added. All other semantic, format, evidence, and zero-addition checks still apply.
+Blind validation receives only `source` and `output`. It sees no level, sampled target PIU count, level range, other levels, or generation history.
 
-Human calibration must check that returned lists cover all actual additions and do not miscount facts already expressed or necessarily implied by the source as new. Counts alone cannot reveal omitted or incorrectly segmented PIUs. For example, wooden tools and clay buckets nearby describe two independently identifiable object facts; sharing a sentence does not justify counting them as one. Modifiers and overlapping descriptions should not be mechanically split.
+`BlindExpansionValidation` has exactly three fields:
 
-## Validate Group: group checks and termination
+| Field | Meaning |
+| --- | --- |
+| `passed` | Whether source meaning and constraints are fully preserved without contradictions, and additions are meaningful, relevant, visual, and non-redundant |
+| `reason` | Explanation of the semantic judgment for auditing and human review |
+| `added_pius` | Additions independently identified throughout the output, each containing `fact` and `output_evidence` |
 
-The group validator rechecks Light, Medium, and Rich in one response using a common PIU segmentation. `original_pius` appears only at the top level. Each level has preservation indices, additions, missing facts, contradictions, judgments, and feedback, and refers directly to that shared list; nested `original_pius` fields are forbidden. Single-level `ExpansionValidation` still carries its own `original_pius`. Each level is checked against the source and its configured interval, and valid addition counts must increase strictly.
+Each PIU contains only its fact and verbatim evidence, without an ID, index, or separate count field. For Source `一只猫` and the expansion above:
 
-Levels may add different details, even details that conflict with another level, if each independently respects the source. If the source specifies no time of day, dusk in Medium and noon in Rich may both be valid. Levels need not contain earlier levels' sentences.
+```json
+{
+  "passed": true,
+  "reason": "Source preserved; additions are relevant and meaningful.",
+  "added_pius": [
+    {"fact": "The cat is on a chair", "output_evidence": "on a chair"},
+    {"fact": "Daylight", "output_evidence": "in daylight"}
+  ]
+}
+```
 
-`check_expansion_set_contract` requires exactly the three supported levels and unique `retry_levels`. Each level’s preservation evidence is checked against the top-level original PIU list. Every problem level must appear in `retry_levels`, with nonblank top-level feedback whenever revisions are requested. Extra requested revision levels are allowed and consume their generation budgets. The prompt asks for actionable feedback and revisions limited to levels that need changes.
+The model returns identified additions even when semantics fail. An output with no additions may pass semantically if it faithfully preserves the Source; code determines whether the count meets its target. Original proper names and requested in-image text may retain their source language.
 
-The validation node prepares messages and invokes `execution.execute`, which returns the parsed report. The node then explicitly calls the pure assessment function to compute a `QualityDecision` and records it through `RunStore.record_decision`. `LLMModel` handles model transport and parsing; execution handles history, technical retries and recording. Neither computes or returns a business quality decision. The group report parser checks completeness and revision consistency through `check_expansion_set_contract`, keeping malformed reports within the technical retry boundary. Ordinary quality failures are assessed after execution and lead to generation revisions. Replay reuses the saved response, recomputes the decision in the node and avoids duplicate decision events.
+A PIU is a distinct visual fact identifiable in the text. An added PIU introduces a distinction that the Source neither expresses nor necessarily implies. Translation, paraphrasing, contextual restatement, and generic quality terms do not count. For example, translating the wheel as a pottery wheel in the context of a potter throwing clay adds no new fact by itself.
 
-A single-level `insufficient_expansion_space` flag, a top-level group flag, or any flag inside the group's levels terminates the entire expansion group. Routing uses the saved decision flag rather than parsing reason strings. A terminal group response must still provide all schema fields, the shared original PIU list, exactly three levels, and unique retry levels, but its retry list and feedback may be empty; repairable-response requirements do not apply.
+Independently identifiable facts are counted separately even when expressed in one phrase, without mechanically splitting modifiers or double-counting overlapping facts. The validator must inspect the entire output to avoid listing only some additions. Preservation failures, contradictions, and meaningless expansions are expressed through the overall semantic judgment and its reason.
 
-Human calibration should cover every sampling option, dropped dimensions, quantities, negation, relationships, styles, and strict constraints. Record false acceptances, false rejections, PIU segmentation disagreements, and the reasons for adjustments. Automatic pass rates do not replace those assessments.
+## Code decisions and regeneration
+
+`assess_expansion` receives the blind report, expanded text, and current numeric range and checks:
+
+- The model's semantic `passed` must be true.
+- Text contains a Latin letter, has no code fence, and has no leading `light:`, `medium:`, `rich:`, or `prompt:` label.
+- Each `output_evidence` is a continuous verbatim substring of the expansion, matching case.
+- Facts are nonempty and distinct after case folding and removal of whitespace, punctuation, and underscores.
+- `len(added_pius)` falls within the level's range, including both endpoints, without requiring an exact match to the generation target.
+
+Any failed check makes the code-side `QualityDecision.passed` false. The decision saves rule failure reasons and `added_count`, using only the blind list length for counting. On a quality failure, code regenerates from the original Source and that level's initially sampled target. Passed levels retain their results.
+
+Invalid JSON or schema responses are technical failures retried within the same logical operation. Structurally valid reports proceed to node-level quality assessment; count failures use `piu_out_of_range:<count>`. Report reasons and code failure reasons stay in run records for auditing and human review. Each level allows at most three generations; each logical model operation allows at most five request attempts. Exhausted budgets reject the group.
+
+## group_check: group acceptance conditions
+
+Code requires exactly Light, Medium, and Rich, with matching level identifiers, nonblank prompts, `passed` statuses, and passing blind semantic reports and code decisions. Only then is the group committed and its three business and SFT records exported.
+
+`group_check` directly accepts or rejects the group based on the three levels' passing statuses. Code has already checked each range, and configuration requires strictly increasing, nonoverlapping intervals. Each level independently respects the Source and may choose different additions.
+
+Blind validation removes direct exposure to target counts and ranges, but PIU identification, implied meaning, and list completeness still depend on the model. Code can count the returned list without proving that no facts were omitted or merged. Human review should compare the Source, expanded text, and blind PIU list and cover false acceptances, false rejections, and segmentation disagreements.

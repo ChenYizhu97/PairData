@@ -5,4 +5,4 @@ Budgets include the initial generation or request.
 
 MAX_DRAFTS = 3
 MAX_REQUEST_ATTEMPTS = 5
-WORKFLOW_REVISION = 2
+WORKFLOW_REVISION = 6

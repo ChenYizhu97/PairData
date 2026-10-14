@@ -30,44 +30,28 @@ def source_report(conditions=None, prompt=SOURCE):
     }
 
 
-def expansion_report(level, source=SOURCE):
+def expansion_report(level):
     count = {"light": 0, "medium": 2, "rich": 5}[level]
     return {
-        "original_pius": [{"fact": "one cat", "evidence": source}],
-        "semantic_preservation": True,
-        "no_contradiction": True,
-        "meaningful_addition": True,
-        "valid_format": True,
-        "preserved_pius": [{"original_index": 0, "output_evidence": "A cat"}],
-        "missing_pius": [],
-        "contradictions": [],
-        "added_pius": [
-            {
-                "fact": detail,
-                "output_evidence": detail,
-                "relevant": True,
-                "novel": True,
-                "visual": True,
-            }
-            for detail in ADDITIONS[:count]
-        ],
-        "insufficient_expansion_space": False,
-        "feedback": "",
+        "passed": True,
+        "reason": "Source preserved; additions are meaningful.",
+        "added_pius": [{"fact": detail, "output_evidence": detail} for detail in ADDITIONS[:count]],
     }
 
 
-def set_report(source=SOURCE):
-    reports = {level: expansion_report(level, source) for level in PROMPTS}
-    originals = reports["light"]["original_pius"]
-    for report in reports.values():
-        report.pop("original_pius")
-    return {
-        "original_pius": originals,
-        "levels": reports,
-        "retry_levels": [],
-        "insufficient_expansion_space": False,
-        "feedback": "",
-    }
+def expansion_draft(level):
+    return {"prompt": PROMPTS[level]}
+
+
+def request_level(stage, payload):
+    # 测试根据目标数量或文本定位脚本响应，模型请求本身不含 level。
+    # Tests locate scripted responses by target count or text; model requests contain no level.
+    if stage == "expand":
+        count = payload["target_added_pius"]
+        return "light" if count == 0 else "medium" if count <= 4 else "rich"
+    if stage == "blind_expand_validation":
+        return next(level for level, prompt in PROMPTS.items() if prompt == payload["output"])
+    return None
 
 
 def response_for(stage, payload):
@@ -75,14 +59,12 @@ def response_for(stage, payload):
         language = payload["sample"].get("language")
         prompt = {"en": "A cat.", "mixed": "一只 cat"}.get(language, SOURCE)
         return {"concept": "cat", "prompt": prompt}
-    if stage == "validate_source":
+    if stage == "blind_sampler_validation":
         return source_report(payload["sample"], payload["prompt"])
     if stage == "expand":
-        return {"prompt": PROMPTS[payload["level"]]}
-    if stage == "validate_english":
-        return expansion_report(payload["level"], payload["source"])
-    if stage == "validate_group":
-        return set_report(payload["source"])
+        return expansion_draft(request_level(stage, payload))
+    if stage == "blind_expand_validation":
+        return expansion_report(request_level(stage, payload))
     raise AssertionError(stage)
 
 
@@ -96,7 +78,7 @@ class FakeModel(LLMModel):
     async def invoke(self, inputs, schema):
         stage, payload = model_input(inputs)
         self.calls.append((stage, payload))
-        scripted = self.responses[(stage, payload.get("level"))]
+        scripted = self.responses[(stage, request_level(stage, payload))]
         response = scripted.pop(0) if scripted else response_for(stage, payload)
         if isinstance(response, Exception):
             raise response
@@ -115,9 +97,8 @@ def model_input(inputs):
     import json
 
     from midasdata.schemas import (
+        BlindExpansionValidation,
         ExpansionDraft,
-        ExpansionSetValidation,
-        ExpansionValidation,
         SourceDraft,
         SourceValidation,
     )
@@ -125,10 +106,9 @@ def model_input(inputs):
     schema = json.loads(inputs[0]["content"].rsplit("formatting:\n", 1)[1])
     stages = {
         SourceDraft.__name__: "generate",
-        SourceValidation.__name__: "validate_source",
+        SourceValidation.__name__: "blind_sampler_validation",
         ExpansionDraft.__name__: "expand",
-        ExpansionValidation.__name__: "validate_english",
-        ExpansionSetValidation.__name__: "validate_group",
+        BlindExpansionValidation.__name__: "blind_expand_validation",
     }
     return stages[schema["title"]], json.loads(inputs[1]["content"])
 

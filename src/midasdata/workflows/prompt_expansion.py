@@ -1,8 +1,9 @@
-"""三档扩写：准备本轮 → 并行扩写 → 评估本轮 → 组校验 → 接受 / 修订 / 拒绝。
+"""三档扩写：抽取目标 → 准备本轮 → 并行扩写 → 评估 → 组检查 → 接受 / 重生成 / 拒绝。
 
-Expand three levels: prepare round → expand in parallel → evaluate → validate set → accept / revise / reject.
+Expand three levels: sample targets → prepare round → expand → evaluate → check group → accept / regenerate / reject.
 """
 
+import random
 from functools import partial
 from typing import Annotated, Literal, TypedDict
 
@@ -10,21 +11,20 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
 from midasdata.config import ExpansionRanges
-from midasdata.execution import ExecutionContext, ExecutionFailed, execute, operation_metadata
-from midasdata.limits import MAX_DRAFTS, MAX_REQUEST_ATTEMPTS
+from midasdata.execution import ExecutionContext, operation_metadata
+from midasdata.limits import MAX_DRAFTS
 from midasdata.model import LLMModel
-from midasdata.prompts import messages
 from midasdata.schemas import (
     EXPANSION_LEVELS,
     ExpandedPromptRecord,
     ExpansionLevel,
     ExpansionResult,
-    ExpansionSetValidation,
     PromptExpansionDetails,
     QualityDecision,
     TaskResult,
 )
-from midasdata.validation import assess_expansion_set, check_expansion_set_contract
+from midasdata.storage import content_digest
+from midasdata.validation import assess_group
 from midasdata.workflows.expansion_attempt import ExpansionAttemptInput, build_expansion_attempt
 
 
@@ -49,12 +49,11 @@ class PromptExpansionInput(TypedDict):
 
 
 class PromptExpansionState(PromptExpansionInput, total=False):
+    piu_targets: dict[ExpansionLevel, int]
     round_number: int
     pending_levels: list[ExpansionLevel]
     expansions: Annotated[dict[ExpansionLevel, ExpansionResult], merge_expansions]
-    feedback_by_level: dict[ExpansionLevel, str]
-    set_validation: ExpansionSetValidation | None
-    set_decision: QualityDecision | None
+    group_decision: QualityDecision | None
     failure_reason: str | None
     result: TaskResult
 
@@ -64,24 +63,28 @@ class PromptExpansionOutput(TypedDict):
 
 
 # 节点 / Nodes
-def initialize_expansion(state: PromptExpansionState) -> dict:
+def initialize_expansion(
+    state: PromptExpansionState, *, execution: ExecutionContext, ranges: ExpansionRanges
+) -> dict:
+    # 每个档位只抽取一次目标；固定种子让断点恢复得到相同数量。
+    # Sample one target per level; stable seeds reproduce the same counts on resume.
+    targets = {}
+    for level in EXPANSION_LEVELS:
+        interval = getattr(ranges, level)
+        seed = content_digest([execution.store.manifest["run_id"], state["task_id"], level])
+        targets[level] = random.Random(seed).randint(interval.min, interval.max)
     return {
+        "piu_targets": targets,
         "round_number": 0,
         "pending_levels": list(EXPANSION_LEVELS),
         "expansions": {},
-        "feedback_by_level": {},
-        "set_validation": None,
-        "set_decision": None,
+        "group_decision": None,
         "failure_reason": None,
     }
 
 
 def prepare_round(state: PromptExpansionState) -> dict:
-    return {
-        "round_number": state["round_number"] + 1,
-        "set_validation": None,
-        "set_decision": None,
-    }
+    return {"round_number": state["round_number"] + 1}
 
 
 async def expand_prompt(state: ExpansionAttemptInput, *, attempt_workflow) -> dict:
@@ -96,95 +99,26 @@ def evaluate_round(state: PromptExpansionState) -> dict:
     for result in current:
         if result.status == "technical_failed":
             return {"failure_reason": result.reason}
-        if result.decision and result.decision.insufficient_expansion_space:
-            return {"failure_reason": "insufficient_expansion_space"}
     retry_levels = [result.level for result in current if result.status != "passed"]
     if any(state["expansions"][level].generation_attempt >= MAX_DRAFTS for level in retry_levels):
         return {"failure_reason": "quality_budget_exhausted"}
-    feedback = dict(state["feedback_by_level"])
-    for level in retry_levels:
-        result = state["expansions"][level]
-        assert result.validation is not None
-        feedback[level] = "\n".join([result.validation.feedback, result.reason])
-    return {"pending_levels": retry_levels, "feedback_by_level": feedback}
+    return {"pending_levels": retry_levels}
 
 
-def parse_set_report(
-    output: dict,
-    *,
-    validator: LLMModel,
-    source_prompt: str,
-    expanded_prompts: dict[ExpansionLevel, str],
-    ranges: ExpansionRanges,
-) -> ExpansionSetValidation:
-    """解析报告并检查修订契约，质量结果由校验节点随后计算。
+def group_check(state: PromptExpansionState, *, execution: ExecutionContext) -> dict:
+    """三档均通过后完成程序检查，并记录整组决策。
 
-    Parse the report and check its revision contract; the validation node then assesses quality.
+    Check the three accepted levels in code and record the group decision.
     """
-    report = validator.parse(output, ExpansionSetValidation)
-    check_expansion_set_contract(report, source_prompt, expanded_prompts, ranges)
-    return report
-
-
-async def validate_expansion_set(
-    state: PromptExpansionState,
-    *,
-    validator: LLMModel,
-    execution: ExecutionContext,
-    ranges: ExpansionRanges,
-) -> dict:
-    prompts = {level: state["expansions"][level].prompt for level in EXPANSION_LEVELS}
-    payload = {
-        "source": state["source_prompt"],
-        "outputs": prompts,
-        "piu_ranges": ranges.model_dump(),
-    }
+    decision = assess_group(state["expansions"])
     metadata = operation_metadata(
-        state["task_id"], "validate_group", model=validator.name, round_number=state["round_number"]
+        state["task_id"], "group_check", round_number=state["round_number"]
     )
-    try:
-        report = await execute(
-            partial(
-                validator.invoke,
-                messages("validate_group", payload, ExpansionSetValidation),
-                ExpansionSetValidation,
-            ),
-            context=execution,
-            metadata=metadata,
-            payload=payload,
-            parse=partial(
-                parse_set_report,
-                validator=validator,
-                source_prompt=state["source_prompt"],
-                expanded_prompts=prompts,
-                ranges=ranges,
-            ),
-            retry_if=validator.is_retryable,
-            describe_error=validator.error_text,
-            max_attempts=MAX_REQUEST_ATTEMPTS,
-        )
-    except ExecutionFailed as error:
-        return {"failure_reason": f"technical_failure:{error}"}
-    decision = assess_expansion_set(report, state["source_prompt"], prompts, ranges)
     execution.store.record_decision(metadata, decision)
-    update = {
-        "set_validation": report,
-        "set_decision": decision,
-        "pending_levels": [level for level in EXPANSION_LEVELS if level in decision.retry_levels],
+    return {
+        "group_decision": decision,
+        "failure_reason": None if decision.passed else "; ".join(decision.reasons),
     }
-    if decision.insufficient_expansion_space:
-        return {**update, "failure_reason": "insufficient_expansion_space"}
-    if any(
-        state["expansions"][level].generation_attempt >= MAX_DRAFTS
-        for level in decision.retry_levels
-    ):
-        return {**update, "failure_reason": "group_quality_budget_exhausted"}
-    feedback = dict(state["feedback_by_level"])
-    for level in decision.retry_levels:
-        feedback[level] = "\n".join(
-            [report.feedback, report.levels[level].feedback, "; ".join(decision.reasons)]
-        )
-    return {**update, "feedback_by_level": feedback}
 
 
 def expansion_result(state: PromptExpansionState, passed: bool) -> TaskResult:
@@ -205,9 +139,7 @@ def expansion_result(state: PromptExpansionState, passed: bool) -> TaskResult:
         details=PromptExpansionDetails(
             round=state["round_number"],
             levels=state["expansions"],
-            group_validation=state["set_validation"],
-            group_decision=state["set_decision"],
-            feedback=state["feedback_by_level"],
+            group_decision=state["group_decision"],
         ),
     )
 
@@ -220,8 +152,8 @@ def reject_expansion(state: PromptExpansionState) -> dict:
     return {"result": expansion_result(state, False)}
 
 
-# 路由：分派的尝试没有自己的修订循环，所有轮次和预算由父图统一管理。
-# Routing: the parent graph owns all revision rounds and budgets for dispatched attempts.
+# 路由：父图统一管理轮次与预算，每次生成使用该档位固定的目标数量。
+# Routing: the parent owns rounds and budgets; every generation uses its level's fixed target.
 def dispatch_attempts(state: PromptExpansionState) -> list[Send]:
     tasks = []
     for level in state["pending_levels"]:
@@ -232,8 +164,7 @@ def dispatch_attempts(state: PromptExpansionState) -> list[Send]:
             "level": level,
             "round_number": state["round_number"],
             "draft_number": previous.generation_attempt + 1 if previous else 1,
-            "previous_prompt": previous.prompt if previous else "",
-            "revision_feedback": state["feedback_by_level"].get(level, ""),
+            "target_added_pius": state["piu_targets"][level],
         }
         tasks.append(Send("expand_prompt", task))
     return tasks
@@ -241,20 +172,18 @@ def dispatch_attempts(state: PromptExpansionState) -> list[Send]:
 
 def after_round(
     state: PromptExpansionState,
-) -> Literal["prepare_round", "validate_expansion_set", "reject_expansion"]:
+) -> Literal["prepare_round", "group_check", "reject_expansion"]:
     if state["failure_reason"] is not None:
         return "reject_expansion"
-    return "prepare_round" if state["pending_levels"] else "validate_expansion_set"
+    return "prepare_round" if state["pending_levels"] else "group_check"
 
 
-def after_set_validation(
+def after_group_check(
     state: PromptExpansionState,
-) -> Literal["accept_expansion", "prepare_round", "reject_expansion"]:
-    if state["failure_reason"] is not None:
-        return "reject_expansion"
-    decision = state["set_decision"]
-    assert decision is not None, "set routing requires current validation"
-    return "accept_expansion" if decision.passed else "prepare_round"
+) -> Literal["accept_expansion", "reject_expansion"]:
+    decision = state["group_decision"]
+    assert decision is not None, "group routing requires a current decision"
+    return "accept_expansion" if decision.passed else "reject_expansion"
 
 
 # 构建工作流 / Build workflow
@@ -267,13 +196,15 @@ def build_prompt_expansion(
         input_schema=PromptExpansionInput,
         output_schema=PromptExpansionOutput,
     )
-    graph.add_node("initialize_expansion", initialize_expansion)
+    graph.add_node(
+        "initialize_expansion", partial(initialize_expansion, execution=execution, ranges=ranges)
+    )
     graph.add_node("prepare_round", prepare_round)
     graph.add_node("expand_prompt", partial(expand_prompt, attempt_workflow=attempt_workflow))
     graph.add_node("evaluate_round", evaluate_round)
     graph.add_node(
-        "validate_expansion_set",
-        partial(validate_expansion_set, validator=validator, execution=execution, ranges=ranges),
+        "group_check",
+        partial(group_check, execution=execution),
     )
     graph.add_node("accept_expansion", accept_expansion)
     graph.add_node("reject_expansion", reject_expansion)
@@ -282,7 +213,7 @@ def build_prompt_expansion(
     graph.add_conditional_edges("prepare_round", dispatch_attempts, ["expand_prompt"])
     graph.add_edge("expand_prompt", "evaluate_round")
     graph.add_conditional_edges("evaluate_round", after_round)
-    graph.add_conditional_edges("validate_expansion_set", after_set_validation)
+    graph.add_conditional_edges("group_check", after_group_check)
     graph.add_edge("accept_expansion", END)
     graph.add_edge("reject_expansion", END)
     return graph.compile()

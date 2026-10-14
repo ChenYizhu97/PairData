@@ -30,7 +30,6 @@ def main():
         "automatic_reason",
         "human_semantics",
         "human_piu",
-        "human_level_order",
         "false_accept_or_reject",
         "reviewer",
         "notes",

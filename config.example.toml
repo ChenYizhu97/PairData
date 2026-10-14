@@ -27,8 +27,8 @@ base_url = "${OPENAI_BASE_URL}"
 api_key_env = "OPENAI_API_KEY"
 structured_output = "json"
 temperature = 0.0
-# 用于源描述校验、英文扩写校验和整组一致性检查。
-# Used by source validation, English validation, and the group consistency check.
+# 用于采样条件盲校验和扩写语义盲校验。
+# Used by blind sampler validation and blind expansion validation.
 [validator.extra_body.thinking]
 type = "disabled"
 

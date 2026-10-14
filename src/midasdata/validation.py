@@ -5,14 +5,12 @@ Pure functions turn model evidence into quality decisions without model calls or
 
 import re
 
-from midasdata.config import ExpansionRanges
+from midasdata.config import AdditionRange
 from midasdata.schemas import (
     EXPANSION_LEVELS,
+    BlindExpansionValidation,
     ExpansionLevel,
-    ExpansionSetValidation,
-    ExpansionValidation,
-    LevelValidation,
-    OriginalPIU,
+    ExpansionResult,
     QualityDecision,
     SourceValidation,
 )
@@ -46,154 +44,57 @@ def assess_source(report: SourceValidation, conditions: dict, prompt: str) -> Qu
 
 def distinct_facts(facts: list[str]) -> bool:
     normalized = [re.sub(r"[\W_]+", "", fact.casefold()) for fact in facts]
-    return len(set(normalized)) == len(normalized)
+    return all(normalized) and len(set(normalized)) == len(normalized)
 
 
-def assess_level(
-    report: LevelValidation,
-    original_pius: list[OriginalPIU],
-    source_prompt: str,
+def assess_expansion(
+    report: BlindExpansionValidation,
     expanded_prompt: str,
-    level: ExpansionLevel,
-    ranges: ExpansionRanges,
+    interval: AdditionRange,
 ) -> QualityDecision:
+    """语义结论与程序规则都通过时才接受，数量以盲校验列表为准。
+
+    Accept only when semantics and code checks pass; count the blind validator's list.
+    """
     reasons = []
-    if not report.semantic_preservation or report.missing_pius:
-        reasons.append("semantic_omission")
-    if not report.no_contradiction or report.contradictions:
-        reasons.append("contradiction")
-    # Light 没有新增事实，meaningful_addition=false 可以表示“没有新增”。
-    # Light adds no facts, so meaningful_addition=false can mean no additions were made.
-    if not report.meaningful_addition and (level != "light" or report.added_pius):
-        reasons.append("meaningless_addition")
+    if not report.passed:
+        reasons.append(f"semantic_failure:{report.reason}")
     if (
-        not report.valid_format
-        or not re.search(r"[A-Za-z]", expanded_prompt)
+        not re.search(r"[A-Za-z]", expanded_prompt)
         or "```" in expanded_prompt
         or re.match(r"\s*(?:light|medium|rich|prompt)\s*:", expanded_prompt, re.I)
     ):
         reasons.append("invalid_english_format")
-    if (
-        not original_pius
-        or not distinct_facts([item.fact for item in original_pius])
-        or any(item.evidence not in source_prompt for item in original_pius)
-    ):
-        reasons.append("invalid_original_evidence")
-    indices = [item.original_index for item in report.preserved_pius]
-    if sorted(indices) != list(range(len(original_pius))) or any(
-        item.output_evidence not in expanded_prompt for item in report.preserved_pius
-    ):
-        reasons.append("incomplete_preservation_evidence")
-    additions = [
-        item
-        for item in report.added_pius
-        if item.relevant and item.novel and item.visual and item.output_evidence in expanded_prompt
-    ]
-    if len(additions) != len(report.added_pius) or not distinct_facts(
-        [item.fact for item in additions]
-    ):
-        reasons.append("invalid_added_evidence")
-    interval = getattr(ranges, level)
-    if not interval.min <= len(additions) <= interval.max:
-        reasons.append(f"piu_out_of_range:{len(additions)}:{interval.min}-{interval.max}")
-    if report.insufficient_expansion_space:
-        reasons.append("insufficient_expansion_space")
-    return QualityDecision(
-        passed=not reasons,
-        reasons=reasons,
-        added_count=len(additions),
-        insufficient_expansion_space=report.insufficient_expansion_space,
-    )
+    if any(item.output_evidence not in expanded_prompt for item in report.added_pius):
+        reasons.append("added_evidence_not_found")
+    if not distinct_facts([item.fact for item in report.added_pius]):
+        reasons.append("duplicate_or_empty_added_fact")
+    count = len(report.added_pius)
+    if not interval.min <= count <= interval.max:
+        reasons.append(f"piu_out_of_range:{count}")
+    return QualityDecision(passed=not reasons, reasons=reasons, added_count=count)
 
 
-def assess_expansion(
-    report: ExpansionValidation,
-    source_prompt: str,
-    expanded_prompt: str,
-    level: ExpansionLevel,
-    ranges: ExpansionRanges,
-) -> QualityDecision:
-    return assess_level(report, report.original_pius, source_prompt, expanded_prompt, level, ranges)
+def assess_group(expansions: dict[ExpansionLevel, ExpansionResult]) -> QualityDecision:
+    """整组只检查固定三档是否齐全且各自已通过，不调用模型。
 
-
-def expansion_set_findings(
-    report: ExpansionSetValidation,
-    source_prompt: str,
-    expanded_prompts: dict[ExpansionLevel, str],
-    ranges: ExpansionRanges,
-) -> tuple[list[ExpansionLevel], list[str]]:
-    decisions = {
-        level: assess_level(
-            report.levels[level],
-            report.original_pius,
-            source_prompt,
-            expanded_prompts[level],
-            level,
-            ranges,
-        )
-        for level in EXPANSION_LEVELS
-    }
-    problems = [level for level in EXPANSION_LEVELS if not decisions[level].passed]
-    reasons = [f"{level}:{reason}" for level in problems for reason in decisions[level].reasons]
-    for lower, higher in zip(EXPANSION_LEVELS, EXPANSION_LEVELS[1:]):
-        if decisions[lower].added_count >= decisions[higher].added_count:
-            if higher not in problems:
-                problems.append(higher)
-            reasons.append(f"{higher}:piu_not_increasing")
-    return problems, reasons
-
-
-def check_expansion_set_contract(
-    report: ExpansionSetValidation,
-    source_prompt: str,
-    expanded_prompts: dict[ExpansionLevel, str],
-    ranges: ExpansionRanges,
-) -> None:
-    """检查报告是否完整且修订指令自洽；不决定是否接受扩写结果。
-
-    Check report completeness and revision consistency without accepting or rejecting expansions.
+    Check that all three expected levels exist and have passed, without model calls.
     """
-    if set(report.levels) != set(EXPANSION_LEVELS):
-        raise ValueError("group validation must contain light, medium and rich")
-    if len(report.retry_levels) != len(set(report.retry_levels)):
-        raise ValueError("retry_levels must not contain duplicates")
-    if report.insufficient_expansion_space or any(
-        item.insufficient_expansion_space for item in report.levels.values()
-    ):
-        return
-    # 修订列表需覆盖证据暴露的问题；不完整的报告应重新请求校验。
-    # Revisions must cover problems found in the evidence; incomplete reports need revalidation.
-    problems, _ = expansion_set_findings(report, source_prompt, expanded_prompts, ranges)
-    if not set(problems).issubset(report.retry_levels):
-        raise ValueError("retry_levels must include every failing level")
-    if report.retry_levels and not report.feedback.strip():
-        raise ValueError("requested revisions require feedback")
-
-
-def assess_expansion_set(
-    report: ExpansionSetValidation,
-    source_prompt: str,
-    expanded_prompts: dict[ExpansionLevel, str],
-    ranges: ExpansionRanges,
-) -> QualityDecision:
-    """节点对已通过契约检查的报告计算业务质量结果。
-
-    Nodes assess business quality after the report has passed its contract checks.
-    """
-    if report.insufficient_expansion_space or any(
-        item.insufficient_expansion_space for item in report.levels.values()
-    ):
-        return QualityDecision(
-            passed=False,
-            reasons=["insufficient_expansion_space"],
-            retry_levels=report.retry_levels,
-            insufficient_expansion_space=True,
-        )
-    problems, reasons = expansion_set_findings(report, source_prompt, expanded_prompts, ranges)
-    if report.retry_levels:
-        reasons.append("group_revision_requested")
-    return QualityDecision(
-        passed=not problems and not report.retry_levels,
-        reasons=reasons,
-        retry_levels=report.retry_levels,
-    )
+    reasons = []
+    if set(expansions) != set(EXPANSION_LEVELS):
+        reasons.append("incomplete_expansion_group")
+    for level in EXPANSION_LEVELS:
+        result = expansions.get(level)
+        if result is None:
+            continue
+        if (
+            result.level != level
+            or not result.prompt.strip()
+            or result.status != "passed"
+            or result.validation is None
+            or not result.validation.passed
+            or result.decision is None
+            or not result.decision.passed
+        ):
+            reasons.append(f"{level}:expansion_not_passed")
+    return QualityDecision(passed=not reasons, reasons=reasons)

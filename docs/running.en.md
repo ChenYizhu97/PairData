@@ -72,7 +72,7 @@ The review CSV leaves human judgment fields blank and does not automatically app
 
 ## Essential tests
 
-Offline tests cover key flows, shared budgets, parallel branch convergence, evidence attribution, recovery of model and ordinary operations, technical retries, configuration isolation, input boundaries, and exports. They do not test fixed prompt wording, call remote models, or read project datasets.
+Offline tests cover key flows, per-level budgets and blind validation boundaries, parallel branch convergence, evidence attribution, recovery of model and ordinary operations, technical retries, configuration isolation, input boundaries, and exports. They do not test fixed prompt wording, call remote models, or read project datasets.
 
 ```bash
 uv run --locked python -m unittest discover -s tests -v

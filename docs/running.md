@@ -72,7 +72,7 @@ uv run python scripts/review_samples.py runs/expanded --out runs/expanded-review
 
 ## 必要测试
 
-离线测试覆盖关键流程、共享预算、并行汇合、证据归属、模型与普通操作的执行恢复、技术重试、配置隔离、输入边界和导出。不测试固定提示词措辞，不调用远程模型，不读取项目数据集。
+离线测试覆盖关键流程、单档预算与盲校验边界、并行汇合、证据归属、模型与普通操作的执行恢复、技术重试、配置隔离、输入边界和导出。不测试固定提示词措辞，不调用远程模型，不读取项目数据集。
 
 ```bash
 uv run --locked python -m unittest discover -s tests -v

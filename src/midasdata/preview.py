@@ -62,21 +62,33 @@ for (const dimension of __DIMENSIONS__) {
 function matches(value, selected) {
   return !selected || (selected === '(empty)' ? !value : value === selected);
 }
+function piuList(title, pius) {
+  const details = element('details');
+  details.appendChild(element('summary', `${title} · ${pius.length}`));
+  const list = element('ul');
+  for (const piu of pius) list.appendChild(element('li', `${piu.fact} — ${piu.output_evidence}`));
+  details.appendChild(list);
+  return details;
+}
 function card(record) {
   const article = element('article');
   article.appendChild(element('h2', `${record.id} · ${record.status}`));
   article.appendChild(element('p', `来源：${record.source.origin || '（无）'} · 条件：${JSON.stringify(record.source.sample || {})}`));
   if (record.workflow === 'generate') {
     article.appendChild(element('p', `视觉概念：${record.concept || '（空）'}`));
-    article.appendChild(element('p', record.records[0]?.prompt || record.details.prompt || '（无文本）'));
+    article.appendChild(element('p', record.details.prompt || '（无文本）'));
   } else {
     article.appendChild(element('p', record.source.prompt));
     const columns = element('div'); columns.className = 'columns';
     for (const level of ['light', 'medium', 'rich']) {
       const column = element('section'); column.appendChild(element('h3', level));
-      const result = record.details.levels?.[level];
-      column.appendChild(element('p', record.records.find(item => item.level === level)?.prompt || result?.prompt || '（无文本）'));
-      if (result) column.appendChild(element('p', `生成次数：${result.generation_attempt} · ${result.status} · 新增 PIU：${result.decision?.added_count ?? '未校验'}`));
+      const result = record.details.levels[level];
+      column.appendChild(element('p', result?.prompt || '（无文本）'));
+      if (result) column.appendChild(element('p', `生成次数：${result.generation_attempt} · ${result.status} · 目标 PIU：${result.target_added_pius} · 识别 PIU：${result.decision?.added_count ?? '未校验'}`));
+      if (result?.validation) {
+        column.appendChild(element('p', `语义盲校验：${result.validation.passed ? '通过' : '不通过'} · ${result.validation.reason}`));
+        column.appendChild(piuList('盲校验识别的新增 PIU', result.validation.added_pius));
+      }
       columns.appendChild(column);
     }
     article.appendChild(columns);

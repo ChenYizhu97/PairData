@@ -11,9 +11,16 @@ from langchain_core.messages import AIMessage
 from midasdata.cli import create_parser
 from midasdata.config import load_settings
 from midasdata.runner import run_command
-from midasdata.schemas import ExpansionDraft, ExpansionValidation
+from midasdata.schemas import BlindExpansionValidation, ExpansionDraft
 from midasdata.storage import RunStore, read_jsonl, write_json
-from tests.fakes import PROMPTS, SOURCE, expansion_report, local_settings, transport_response
+from tests.fakes import (
+    PROMPTS,
+    SOURCE,
+    expansion_report,
+    local_settings,
+    request_level,
+    transport_response,
+)
 
 
 class RunTest(unittest.IsolatedAsyncioTestCase):
@@ -54,6 +61,7 @@ class RunTest(unittest.IsolatedAsyncioTestCase):
             statistics = await run_command(expanded, self.settings)
             records = list(read_jsonl(expanded.out / "data.jsonl"))
             training = list(read_jsonl(expanded.out / "sft.jsonl"))
+            self.assertEqual(statistics["requests"], 12)
             self.assertEqual(len(records), 6)
             self.assertEqual(len(training), 6)
             self.assertEqual(
@@ -77,31 +85,36 @@ class RunTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((expanded.out / "data.jsonl").read_bytes(), expected)
             self.assertNotIn("test-secret", (expanded.out / "manifest.json").read_text())
 
-    async def test_interrupted_revision_reuses_other_levels_and_keeps_budgets(self):
+    async def test_interrupted_regeneration_keeps_targets_and_budgets(self):
         source = self.root / "input.jsonl"
         source.write_text(json.dumps({"id": "sample", "prompt": SOURCE}) + "\n")
         args = create_parser().parse_args(
             ["expand", "--input", str(source), "--out", str(self.root / "run")]
         )
-        revision_started = asyncio.Event()
+        regeneration_started = asyncio.Event()
         medium_drafts = 0
+        generation_inputs = []
 
         async def transport(inputs):
             nonlocal medium_drafts
             schema = json.loads(inputs[0]["content"].rsplit("formatting:\n", 1)[1])
             payload = json.loads(inputs[1]["content"])
-            if schema["title"] == ExpansionDraft.__name__ and payload["level"] == "medium":
+            if (
+                schema["title"] == ExpansionDraft.__name__
+                and request_level("expand", payload) == "medium"
+            ):
                 medium_drafts += 1
+                generation_inputs.append(payload)
                 if medium_drafts == 2:
-                    revision_started.set()
+                    regeneration_started.set()
                     await asyncio.Future()
             if (
-                schema["title"] == ExpansionValidation.__name__
-                and payload["level"] == "medium"
+                schema["title"] == BlindExpansionValidation.__name__
+                and request_level("blind_expand_validation", payload) == "medium"
                 and medium_drafts == 1
             ):
                 report = expansion_report("medium")
-                report["missing_pius"], report["feedback"] = ["cat"], "Restore the cat."
+                report.update(passed=False, reason="Restore the cat.")
                 return AIMessage(content=json.dumps(report))
             return transport_response(inputs)
 
@@ -110,7 +123,7 @@ class RunTest(unittest.IsolatedAsyncioTestCase):
             model.ainvoke = AsyncMock(side_effect=transport)
             running = asyncio.create_task(run_command(args, self.settings))
             try:
-                await asyncio.wait_for(revision_started.wait(), 3)
+                await asyncio.wait_for(regeneration_started.wait(), 3)
             finally:
                 running.cancel()
                 with self.assertRaises(asyncio.CancelledError):
@@ -121,11 +134,14 @@ class RunTest(unittest.IsolatedAsyncioTestCase):
             args.resume = True
             model.ainvoke.reset_mock()
             statistics = await run_command(args, self.settings)
-            self.assertEqual(model.ainvoke.await_count, 3)
+            self.assertEqual(model.ainvoke.await_count, 2)
             self.assertEqual(statistics["logical_generations"], 4)
             self.assertEqual(statistics["technical_retries"], 1)
             self.assertEqual(statistics["quality_retries"], 1)
             self.assertEqual(statistics["passed"], 1)
+            self.assertEqual(len(generation_inputs), 3)
+            self.assertEqual(set(generation_inputs[0]), {"source", "target_added_pius"})
+            self.assertEqual(generation_inputs, [generation_inputs[0]] * 3)
 
     async def test_bad_input_is_rejected_before_any_model_requests(self):
         for rows in (

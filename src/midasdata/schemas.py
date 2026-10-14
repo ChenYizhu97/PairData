@@ -75,10 +75,6 @@ class SourceDraft(Contract):
     prompt: Text
 
 
-class ExpansionDraft(Contract):
-    prompt: Text
-
-
 class ConditionEvidence(Contract):
     satisfied: bool
     evidence: Text
@@ -92,69 +88,40 @@ class SourceValidation(Contract):
     feedback: str
 
 
-class OriginalPIU(Contract):
-    fact: Text
-    evidence: Text
-
-
-class PreservedPIU(Contract):
-    original_index: Annotated[int, Field(ge=0)]
-    output_evidence: Text
-
-
 class AddedPIU(Contract):
     fact: Text
     output_evidence: Text
-    relevant: bool
-    novel: bool
-    visual: bool
 
 
-class LevelValidation(Contract):
-    semantic_preservation: bool
-    no_contradiction: bool
-    meaningful_addition: bool
-    valid_format: bool
-    preserved_pius: list[PreservedPIU]
-    missing_pius: list[str]
-    contradictions: list[str]
-    added_pius: list[AddedPIU]
-    insufficient_expansion_space: bool
-    feedback: str
+class ExpansionDraft(Contract):
+    prompt: Text
 
 
-class ExpansionValidation(LevelValidation):
-    original_pius: list[OriginalPIU]
+class BlindExpansionValidation(Contract):
+    """模型只判断语义并识别新增事实，数量由程序检查。
 
-
-class ExpansionSetValidation(Contract):
-    """三个档位共享一次源事实提取；字段与固定的组校验提示词一致。
-
-    All three levels share source facts; fields match the fixed group validation prompt.
+    The model judges semantics and identifies additions; code checks their count.
     """
 
-    original_pius: list[OriginalPIU]
-    levels: dict[ExpansionLevel, LevelValidation]
-    retry_levels: list[ExpansionLevel]
-    insufficient_expansion_space: bool
-    feedback: str
+    passed: bool
+    reason: Text
+    added_pius: list[AddedPIU]
 
 
 class QualityDecision(Contract):
     passed: bool
     reasons: list[str] = Field(default_factory=list)
     added_count: int = 0
-    retry_levels: list[ExpansionLevel] = Field(default_factory=list)
-    insufficient_expansion_space: bool = False
 
 
 class ExpansionResult(Contract):
     level: ExpansionLevel
     round: int
     generation_attempt: int
+    target_added_pius: int = Field(ge=0)
     status: Literal["passed", "quality_failed", "technical_failed"]
     prompt: str = ""
-    validation: ExpansionValidation | None = None
+    validation: BlindExpansionValidation | None = None
     decision: QualityDecision | None = None
     reason: str = ""
 
@@ -170,9 +137,7 @@ class SourceGenerationDetails(Contract):
 class PromptExpansionDetails(Contract):
     round: int = 0
     levels: dict[ExpansionLevel, ExpansionResult] = Field(default_factory=dict)
-    group_validation: ExpansionSetValidation | None = None
     group_decision: QualityDecision | None = None
-    feedback: dict[ExpansionLevel, str] = Field(default_factory=dict)
 
 
 class TaskResult(Contract):

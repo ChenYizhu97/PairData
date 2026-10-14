@@ -59,14 +59,16 @@ runner、执行层和工作流节点在事件循环中同步通过 `RunStore` �
 | 工作流 | `records` | `details` |
 | --- | --- | --- |
 | `generate` | `SourcePromptRecord` 列表 | `SourceGenerationDetails`：草稿 `prompt`、当前 `validation` 和 `decision`、`generation_attempt`、`feedback` |
-| `expand` | `ExpandedPromptRecord` 列表 | `PromptExpansionDetails`：`round`、`levels`、当前 `group_validation` 和 `group_decision`、各等级的 `feedback` |
+| `expand` | `ExpandedPromptRecord` 列表 | `PromptExpansionDetails`：`round`、`levels`、程序生成的 `group_decision` |
 
-`PromptExpansionDetails.levels` 中的每一项都是 `ExpansionResult`，包含等级、轮次、生成次数、状态、提示词、可选的校验报告和决策，以及原因。它的状态为 `passed`、`quality_failed` 或 `technical_failed`。这些是单档状态；外层样本的状态为 `passed` 或 `rejected`。
+`PromptExpansionDetails.levels` 中的每一项都是 `ExpansionResult`，包含等级、轮次、生成次数、抽取的目标数量 `target_added_pius`、状态、提示词、可选的盲校验报告和程序决策，以及原因。它的状态为 `passed`、`quality_failed` 或 `technical_failed`。这些是单档状态；外层样本的状态为 `passed` 或 `rejected`。
 
 不属于当前工作流的记录和详情，以及嵌套结构中的未知字段，都会被拒绝。`source` 允许扩展来源元数据。存储、导出和评审脚本读取有类型约束的模型；预览生成时将它们序列化为嵌入页面的 JSON。
 
-可选详情字段连同默认值一起完整序列化，包括缺少校验报告和决策时的 `null`。只有业务记录的 `sample` 会省略被丢弃的维度。决策中的 `insufficient_expansion_space` 标记与原始校验报告、拒绝原因一起保存。产物按 `schemas.py` 中的当前契约读写。
+可选详情字段连同默认值一起完整序列化，包括缺少校验报告和决策时的 `null`。只有业务记录的 `sample` 会省略被丢弃的维度。盲校验报告保存语义 `passed`、`reason` 和独立识别的 `added_pius`；程序决策保存最终 `passed`、规则失败原因和 `added_count`。`added_count` 使用盲校验列表的长度，列表有证据或重复问题时仍拒绝。每个 PIU 只包含 `fact` 和 `output_evidence`，没有 ID 或索引。产物按 `schemas.py` 中的当前契约读写。
 
-新草稿替换旧文本后，当前校验报告和决策会清空，直到新草稿完成校验。先前的证据仍保存在 `audit.jsonl` 中。进入新一轮扩写时，也会清空上一轮的组校验报告和决策，同时将修订反馈传给需要修改的等级。
+新草稿替换旧文本后，当前校验报告和决策会清空，直到新草稿完成校验。先前的证据仍保存在 `audit.jsonl` 中。每次扩写生成使用原 Source 和最初抽取的目标数量；`reason` 用于记录结果原因。组决策在三档均通过后产生一次。
+
+教师生成请求使用从档位范围内抽取的整数目标 `target_added_pius`，不发送范围；生成器响应只有 `prompt`。请求审计和单档结果保留目标数量，盲校验请求不含该值。业务记录及 SFT 的用户消息仍用 `level` 标识训练目标。`group_check` 只产生程序质量决策事件，没有模型响应。
 
 软件版本和工作流版本包含在运行清单及恢复指纹中。内部图状态与工作流节点定义在同一模块，不放在 `schemas.py` 中。

@@ -8,17 +8,17 @@ Sources can be Chinese, English, or mixed Chinese/English, with default sampling
 
 ## Tasks and responsibilities
 
-The project has five model tasks organized into two main workflows. A PIU is a distinct visual fact identifiable in the text. An added PIU must introduce a visual distinction that the source neither expresses nor necessarily implies.
+The project has four model tasks and one programmatic group check organized into two main workflows. A PIU is a distinct visual fact identifiable in the text. An added PIU must introduce a visual distinction that the source neither expresses nor necessarily implies.
 
 | Module | Responsibility | Core requirements |
 | --- | --- | --- |
 | Generate Source | Generate an image request resembling real user input from sampled conditions | Match the supplied `domain`, `focus`, `specificity`, `expression`, and `language` conditions, maintain naturalness and diversity, and omit sampling labels and metadata |
-| Validate Source | Check whether the Source satisfies its sampled conditions | Check only supplied dimensions, assess visual content, language, expression, and text validity, and return judgments with source evidence |
-| Expand | Convert and expand the Source into an English image prompt | Preserve the source meaning; by default add 0 valid PIUs for Light, 2–4 for Medium, and 5–8 for Rich; return only the prompt |
-| Validate English | Independently validate each expansion level | Check original PIU preservation, semantic contradictions, the validity and count of added PIUs, and output format |
-| Validate Group | Jointly validate the three expansions of one Source | Use a shared segmentation of original PIUs, reassess all three levels against their required counts, and identify levels needing revision |
+| blind_sampler_validation | Check whether the Source satisfies its sampled conditions | Check only supplied dimensions, assess visual content, language, expression, and text validity, and return judgments with source evidence |
+| Expand | Expand the Source toward a sampled number of added PIUs | Python uniformly samples an integer `target_added_pius` from the level's range; the model receives only the Source and target count and returns `prompt`, without a level or range |
+| blind_expand_validation | Independently judge expansion semantics and identify additions | The model sees only the Source and expanded text and returns `passed`, `reason`, and `added_pius`; code checks the count range, evidence, duplicates, and basic format |
+| group_check | Confirm group acceptance in code | Require Light, Medium, and Rich to be present and individually passed, then commit the group without a model call |
 
-The `generator` model role handles Generate Source and Expand. The `validator` role handles the three validation tasks. The roles can use the same or different models; individual and group validation run separately.
+The `generator` role handles Generate Source and Expand; the `validator` role handles the two blind validation tasks. The roles can use the same or different models. Expansion blind validation receives no level, target count, or range. Count decisions use only its independently identified additions. Default ranges are Light 0, Medium 2–4, and Rich 5–8; acceptance still requires the count to fall within the level's range, without requiring an exact match to the sampled target.
 
 ## Two main workflows
 
@@ -29,7 +29,7 @@ Sampling determines task conditions. The generator chooses a visual concept and 
 ```mermaid
 flowchart LR
     A[Sample] --> B[Generate Source]
-    B --> C[Validate Source]
+    B --> C[blind_sampler_validation]
     C -->|Pass| D[Source]
     C -.->|Repairable and budget available| B
     C -->|Cannot pass| R[Reject]
@@ -39,31 +39,34 @@ Revisions preserve sampled conditions and retain the visual concept where possib
 
 ### Expansion
 
-Each level independently generates and validates an expansion from the same Source, using only the source description and its own revision history. Once all levels pass individual validation, the group is reassessed together.
+Each level independently generates and validates an expansion from the same Source. A target count is sampled at the start for each level, and all generation attempts use that Source and fixed target. Once every level passes semantic blind validation and code checks, `group_check` confirms group completeness.
 
 ```mermaid
 flowchart TD
     S[Source] --> L[Expand · Light]
     S --> M[Expand · Medium]
     S --> R[Expand · Rich]
-    L --> LV[Validate English · Light]
-    M --> MV[Validate English · Medium]
-    R --> RV[Validate English · Rich]
-    LV -->|Pass| G[Validate Group]
-    MV -->|Pass| G
-    RV -->|Pass| G
+    L --> LV[blind_expand_validation · Light]
+    M --> MV[blind_expand_validation · Medium]
+    R --> RV[blind_expand_validation · Rich]
+    LV --> LC[Code checks PIU range and other rules]
+    MV --> MC[Code checks PIU range and other rules]
+    RV --> RC[Code checks PIU range and other rules]
+    LC -->|Pass| G[group_check]
+    MC -->|Pass| G
+    RC -->|Pass| G
     G -->|Whole group passes| D[SFT Data]
 ```
 
-Individual validation failures trigger revision of the corresponding level; group failures target the levels specified in feedback. Revised outputs are validated again. Exhausted budgets or insufficient expansion space reject the entire group. Only a passing group produces three expansion records and their SFT data. Levels may choose different additions without inheriting earlier levels' text.
+A level that fails semantic or code checks is generated again using its original target count, then blindly validated. Generation requests always contain only the Source and target count. Exhausting a generation or technical request budget rejects the entire group, as does a failed `group_check`. Only three passing levels produce the expansion records and SFT data. Levels may choose different additions without inheriting earlier levels' text.
 
 Source Generation and Expansion can run separately, and Expansion also accepts external Sources. The implementation's `expansion_attempt` is a reusable subgraph inside Expansion that generates and validates once. Expansion levels consistently use `level`.
 
 ## Quality and run records
 
-Models identify visual facts, judge semantics, and provide evidence. Workflow nodes apply deterministic checks to their reports, and routes decide whether to accept, revise, or reject. Evidence location, index coverage, and count constraints can be checked in code. PIU segmentation, implied meaning, and addition validity still depend on model judgments and require human calibration.
+Models judge semantics, identify added visual facts, and provide evidence. Code uses the blind report to accept, regenerate, or reject, checking count ranges, duplicates, evidence location, and basic format. PIU segmentation, implied meaning, and addition validity still depend on model judgments and require human calibration. Results retain the generation target and blind report, with no PIU indices. Expansion regeneration, technical retries, and resume always use the originally sampled target count.
 
-Quality revisions and technical request retries have separate budgets. Each Source allows at most three generations, and each expansion level allows at most three generations shared between individual and group revisions. A logical model operation allows at most five request attempts. Runs save model responses, quality decisions, and terminal results; recovery reuses history and preserves consumed budgets.
+Generation and technical request retries have separate budgets. Each Source and each expansion level allow at most three generations. A logical model operation allows at most five request attempts. Without retries, an expansion group requires three generation calls and three blind validation calls: six model requests. Runs save model responses, quality decisions, and terminal results; recovery reuses history and preserves consumed budgets.
 
 ## Documentation
 
@@ -71,6 +74,6 @@ Quality revisions and technical request retries have separate budgets. Each Sour
 | --- | --- |
 | [Workflow design](docs/workflows.en.md) | State, nodes, routes, and builders for the two main workflows and internal subgraph, execution layers, and recovery |
 | [Sampling design](docs/sampler.en.md) | Five dimensions, default distributions, dropout, and Source diversity |
-| [Validation rules](docs/validation.en.md) | Source validity, PIU definitions, evidence requirements, and individual and group validation |
+| [Validation rules](docs/validation.en.md) | Source validity, PIU definitions, blind validation, code decisions, and group acceptance conditions |
 | [Data contracts](docs/data.en.md) | Source, expansion, and SFT structures, run records, and provenance |
 | [Running the project](docs/running.en.md) | Environment, configuration, commands, previews, and essential tests |

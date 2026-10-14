@@ -12,14 +12,14 @@ import httpx
 import openai
 from langchain_core.messages import AIMessage
 
-from midasdata.config import ConfigurationError, ExpansionRanges
+from midasdata.config import AdditionRange, ConfigurationError
 from midasdata.execution import ExecutionContext, ExecutionFailed, execute, operation_metadata
 from midasdata.model import LLMModel
-from midasdata.schemas import ExpansionDraft, ExpansionResult, ExpansionValidation
+from midasdata.schemas import BlindExpansionValidation, ExpansionDraft
 from midasdata.storage import RunStore, write_jsonl
 from midasdata.validation import assess_expansion
-from midasdata.workflows.prompt_expansion import validate_expansion_set
-from tests.fakes import PROMPTS, SOURCE, expansion_report, local_settings, set_report
+from midasdata.workflows.expansion_attempt import blind_expand_validation
+from tests.fakes import PROMPTS, SOURCE, expansion_report, local_settings
 
 
 class ExecutionTest(unittest.IsolatedAsyncioTestCase):
@@ -65,11 +65,12 @@ class ExecutionTest(unittest.IsolatedAsyncioTestCase):
     async def test_json_retry_and_native_response_use_the_same_schema(self):
         self.transport.ainvoke.side_effect = [
             AIMessage(content="invalid"),
+            AIMessage(content='{"prompt":"A cat.","unexpected":true}'),
             AIMessage(content='{"prompt":"A cat."}'),
         ]
         response = await self.invoke_model("json")
         self.assertEqual(response.prompt, "A cat.")
-        self.assertEqual(self.transport.ainvoke.await_count, 2)
+        self.assertEqual(self.transport.ainvoke.await_count, 3)
         self.model.structured_output = "native"
         native = AsyncMock()
         native.ainvoke.return_value = {
@@ -138,37 +139,32 @@ class ExecutionTest(unittest.IsolatedAsyncioTestCase):
                     operation.assert_not_awaited()
 
     async def test_invalid_report_retries_then_node_assesses_quality(self):
-        invalid = set_report()
-        invalid["levels"]["rich"]["missing_pius"] = ["cat"]
-        repairable = copy.deepcopy(invalid)
-        repairable["retry_levels"], repairable["feedback"] = ["rich"], "Restore the cat."
+        invalid = {"passed": False, "reason": "Restore the cat."}
+        semantic_failure = expansion_report("rich")
+        semantic_failure.update(invalid)
         self.transport.ainvoke.side_effect = [
-            AIMessage(content=json.dumps(value)) for value in (invalid, repairable)
+            AIMessage(content=json.dumps(value)) for value in (invalid, semantic_failure)
         ]
         state = {
             "task_id": "contract",
             "source_prompt": SOURCE,
             "round_number": 1,
-            "feedback_by_level": {},
-            "expansions": {
-                level: ExpansionResult(
-                    level=level, round=1, generation_attempt=1, status="passed", prompt=prompt
-                )
-                for level, prompt in PROMPTS.items()
-            },
+            "draft_number": 1,
+            "level": "rich",
+            "draft_prompt": PROMPTS["rich"],
         }
-        update = await validate_expansion_set(
+        update = await blind_expand_validation(
             state, validator=self.model, execution=self.execution, ranges=self.settings.piu
         )
-        self.assertFalse(update["set_decision"].passed)
-        self.assertEqual(update["pending_levels"], ["rich"])
+        self.assertFalse(update["decision"].passed)
+        self.assertEqual(update["decision"].added_count, 5)
         self.assertEqual(self.transport.ainvoke.await_count, 2)
         events = [event["event"] for event in self.store.events]
         self.assertEqual(events[-2:], ["success", "quality_decision"])
         self.assertEqual(events.count("quality_decision"), 1)
         self.transport.ainvoke.reset_mock()
         self.assertEqual(
-            await validate_expansion_set(
+            await blind_expand_validation(
                 state, validator=self.model, execution=self.execution, ranges=self.settings.piu
             ),
             update,
@@ -189,22 +185,41 @@ class ExecutionTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("test-secret", (self.store.directory / "audit.jsonl").read_text())
         self.assertEqual(self.transport.ainvoke.await_count, 1)
 
-    def test_evidence_checks_override_claimed_success(self):
+    def test_program_checks_semantics_counts_evidence_and_format(self):
         valid = expansion_report("medium")
         mutations = (
-            lambda report: report["preserved_pius"].clear(),
-            lambda report: report["original_pius"][0].update(evidence="not in source"),
+            lambda report: report.update(passed=False, reason="Source fact omitted."),
+            lambda report: report["added_pius"].pop(),
             lambda report: report["added_pius"][1].update(fact=report["added_pius"][0]["fact"]),
             lambda report: report["added_pius"][0].update(output_evidence="invented evidence"),
         )
+        interval = AdditionRange(min=2, max=4)
         for mutation in mutations:
             report = copy.deepcopy(valid)
             mutation(report)
-            decision = assess_expansion(
-                ExpansionValidation.model_validate(report),
-                SOURCE,
-                PROMPTS["medium"],
-                "medium",
-                ExpansionRanges(),
+            self.assertFalse(
+                assess_expansion(
+                    BlindExpansionValidation.model_validate(report), PROMPTS["medium"], interval
+                ).passed
             )
-            self.assertFalse(decision.passed)
+        for output in ("中文", "```A cat```", "Prompt: A cat."):
+            self.assertFalse(
+                assess_expansion(
+                    BlindExpansionValidation.model_validate(expansion_report("light")),
+                    output,
+                    AdditionRange(min=0, max=0),
+                ).passed
+            )
+        for minimum, maximum in ((0, 0), (2, 4), (5, 8), (3, 6)):
+            for count in {0, max(0, minimum - 1), minimum, maximum, maximum + 1}:
+                facts = [f"detail {index}" for index in range(count)]
+                report = BlindExpansionValidation(
+                    passed=True,
+                    reason="Semantics preserved.",
+                    added_pius=[{"fact": fact, "output_evidence": fact} for fact in facts],
+                )
+                decision = assess_expansion(
+                    report, "A cat. " + ", ".join(facts), AdditionRange(min=minimum, max=maximum)
+                )
+                self.assertEqual(decision.passed, minimum <= count <= maximum)
+                self.assertEqual(decision.added_count, count)

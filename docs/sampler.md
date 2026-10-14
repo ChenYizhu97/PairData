@@ -2,7 +2,7 @@
 
 **中文** | [English](sampler.en.md) · [首页](../README.md)
 
-采样决定 Source Generation 的输入条件与计划分布。Generate Source 根据这些条件模拟自然、多样的用户文生图请求；Validate Source 只检查实际保留的条件。采样覆盖不同主题、表达与语言，文本是否自然仍由生成与校验共同约束。
+采样决定 Source Generation 的输入条件与计划分布。Generate Source 根据这些条件模拟自然、多样的用户文生图请求；blind_sampler_validation 只检查实际保留的条件。采样覆盖不同主题、表达与语言，文本是否自然仍由生成与校验共同约束。
 
 ## 维度与默认值
 
