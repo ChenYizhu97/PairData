@@ -3,6 +3,12 @@
 import json
 from textwrap import dedent
 
+EXPANSION_RANGES = {
+    "light": (0, 0),
+    "medium": (2, 4),
+    "rich": (5, 8),
+}
+
 SFT_SYSTEM = (
     "Translate and expand source image descriptions into English "
     "image-generation prompts according to the specified expansion level, "
@@ -11,155 +17,167 @@ SFT_SYSTEM = (
 
 SYSTEMS = {
     "generate": dedent("""
-        Generate realistic user descriptions for image prompt.
-        Choose a specific visual concept matching the sampled conditions,
-        and return both the concept and the description.
+        Generate realistic user-written image-generation prompts.
+        Choose a visual concept matching the sampled conditions,
+        and return both the concept and the user prompt.
 
         Only sampled conditions are constraints; omitted dimensions are unrestricted.
-        Specificity controls the amount of explicit visual information, not verbosity.
-        Keep descriptions concise and natural, including highly specific ones.
-        Do not write exhaustive image captions.
+        Specificity controls how much visual information is explicit, not verbosity.
+        Keep user prompts concise and natural, even when highly specific.
+        Avoid exhaustive image captions.
 
-        Follow the requested expression style: keywords, natural language,
-        or colloquial requests. language=zh means Chinese, language=en means
-        English, and language=mixed means primarily Chinese with some English
-        visual terms. Mixed-language English must describe visual content.
+        Follow the sampled expression style: keywords, natural language,
+        or colloquial requests. Use realistic phrasing for each style.
+        language=zh means Chinese, language=en means English, and
+        language=mixed means primarily Chinese with some English visual terms.
+        English terms in mixed-language prompts must describe visual content.
 
         For domain=art_design, explicitly specify a design format such as
         illustration, icon, logo, poster, packaging, or typography.
-        A request like "help me draw" alone does not establish a design format.
+        Colloquial drawing requests alone do not imply a design format.
 
         Sampling conditions guide generation but must not appear as labels,
-        metadata, or instructions in the description.
-        Produce valid visual content without explanations, code, or irrelevant chat.
-        On revision, address the feedback while preserving the intended concept.
+        metadata, or instructions in the user prompt.
+        Output only valid image-generation requests, without unrelated content.
+
+        On revision, address the feedback while retaining the visual concept
+        unless the concept itself conflicts with the sampled conditions.
     """).strip(),
 
     "validate_source": dedent("""
-        Validate the source image description against its sampled conditions.
+        Validate the source image-generation prompt against its sampled conditions.
         Check only supplied dimensions; omitted dimensions are unrestricted.
 
         Evaluate condition matching, visual content, and prompt cleanliness.
-        Specificity measures explicitly stated visual information, not raw length.
-        Keywords, natural language, colloquial requests, and mixed language
-        are all acceptable.
+        Specificity reflects the amount and precision of explicit visual information,
+        not text length. Keywords, natural language, colloquial requests,
+        and mixed language are all valid forms.
 
-        language=zh requires Chinese, language=en requires English, and
-        language=mixed requires primarily Chinese with English visual terms.
-        English terms must describe visual content, not sampling parameters.
+        For sampled language conditions:
+        - zh: Chinese.
+        - en: English.
+        - mixed: primarily Chinese with some English visual terms.
+        English terms in mixed prompts must describe visual content,
+        not sampling parameters.
 
-        For domain=art_design, the source must explicitly name a design format
-        such as illustration, icon, logo, poster, packaging, or typography.
-        "Help me draw" alone is insufficient.
+        For domain=art_design, require an explicit design format such as
+        illustration, icon, logo, poster, packaging, or typography.
+        Colloquial drawing requests alone do not imply a design format.
 
-        Provide satisfied and evidence for each sampled dimension.
-        Evidence and visual_evidence must each be a short, continuous,
-        verbatim substring of the source, preserving case and punctuation.
-        Never translate, combine fragments, or include explanations in evidence.
+        Report satisfied and evidence for each sampled dimension.
+        Evidence and visual_evidence must be short, continuous, verbatim
+        substrings of the source, preserving case and punctuation.
+        Do not translate, combine fragments, or invent evidence.
+        Mark conditions as unsatisfied when supporting evidence is absent.
 
-        Reject non-visual content, gibberish, and unrelated explanations.
-        Provide specific, actionable feedback without rewriting the description.
+        Require an identifiable visual concept. Reject gibberish,
+        unrelated explanations, and non-image-generation requests.
+        Provide specific, actionable feedback without rewriting the prompt.
     """).strip(),
 
     "expand": dedent("""
         Convert the source description into a concise English image-generation
         prompt at the requested expansion level.
 
-        Preserve every explicit visual fact, including quantities, negations,
+        Preserve all explicit visual facts, including quantities, negations,
         subjects, attributes, actions, relationships, styles, and on-image text.
 
-        A PIU must represent a complete visual fact that can be traced to the text.
-        Spatial relationships require identifiable participants;
-        isolated relation words are not independent PIUs.
+        A PIU is an independent, complete visual fact supported by the text.
+        Spatial relationships require identifiable participants.
 
-        Light adds 0 PIUs. Medium defaults to 3 new PIUs; Rich defaults to 6.
-        Follow the supplied PIU range when different. Internally count
-        independent additions and aim for the middle of the allowed range.
+        Add new PIUs relative to the original source:
+        - Light: exactly 0.
+        - Medium: 2-4, targeting 3.
+        - Rich: 5-8, targeting 6.
 
-        Added PIUs must be relevant, novel, non-redundant, and visual.
+        Additions must be relevant, visual, and non-redundant.
         Synonyms, adjective stacking, and generic quality terms do not count.
-        Express all information concisely without padding or repetition.
+        Integrate details naturally without repetitive or mechanical enumeration.
 
         Explicit source constraints take priority over expansion targets.
-        Do not violate restrictions such as "only" or "do not add".
+        Preserve the source meaning even when constraints limit additions.
 
-        If previous_output and feedback are provided, revise the previous
-        version. When over-expanded, remove only added facts; when
-        under-expanded, add meaningful visual facts without losing the source.
+        If previous_output and feedback are provided, revise accordingly.
+        Adjust added details while preserving all original visual facts.
 
         Return only a JSON object with a prompt field.
     """).strip(),
 
     "validate_english": dedent("""
-        Validate the English prompt against the source and requested level.
-        Check semantic preservation, contradictions, added PIUs, and format.
+        Validate the English image-generation prompt against the source
+        and requested expansion level.
 
-        A PIU must represent a complete visual fact that can be traced to the text.
-        Spatial relationships require identifiable participants;
-        isolated relation words are not independent PIUs.
-        Identify every original PIU, including
-        quantities, negations, subjects, attributes, actions, relationships,
-        styles, and on-image text. All must be preserved.
+        Identify all original PIUs, including quantities, negations,
+        subjects, attributes, actions, relationships, styles, and on-image text.
+        A PIU is an independent, complete visual fact supported by the text.
+        Spatial relationships require identifiable participants.
+        All original PIUs must be preserved without contradiction.
 
-        For each added PIU, verify relevance, novelty, and visual meaning.
+        Identify valid added PIUs relative to the original source.
+        Additions must be relevant, visual, novel, and non-redundant.
         Synonyms, adjective stacking, and generic quality terms do not count.
+        Flag repetitive or meaningless additions.
+
+        Required numbers of valid added PIUs:
+        - Light: exactly 0.
+        - Medium: 2-4.
+        - Rich: 5-8.
+
+        Count only valid added PIUs. Mark the level as failed if its count
+        falls outside the required range.
 
         Evidence must be a continuous, verbatim substring of the source;
         output_evidence must be a continuous, verbatim substring of the output.
-        Preserve exact case and punctuation. Never translate evidence,
-        combine fragments, or include explanations in evidence fields.
-        Use short representative fragments.
+        Preserve exact case and punctuation. Do not translate or combine
+        fragments. Each fragment must support the corresponding PIU.
+        original_index must use 0-based indices and cover all original PIUs
+        without duplicates.
 
-        original_index must start at 0, cover all original PIUs, and contain
-        no duplicates. Evaluate actual textual facts, not just verbal claims.
+        For Light, an empty added list is valid; set meaningful_addition
+        to true when no meaningless additions exist.
+        If source constraints prevent sufficient expansion, mark
+        insufficient_expansion_space.
 
-        Light must add exactly 0 PIUs; an empty added list is valid and
-        meaningful_addition should be true when no meaningless additions exist.
-        Medium and Rich must satisfy their supplied PIU ranges.
-
-        If strict source constraints make the target impossible, mark
-        insufficient_expansion_space. Reject explanations, labels, or code
-        outside the English image prompt. Provide actionable feedback.
+        Reject explanations, labels, or code outside the English image prompt.
+        Provide specific, actionable feedback without rewriting the prompt.
     """).strip(),
 
     "validate_group": dedent("""
-        Validate the Light, Medium, and Rich prompts together against
-        the same source description.
+        Validate the Light, Medium, and Rich prompts against the same source.
 
-        A PIU must represent a complete visual fact that can be traced to the text.
-        Spatial relationships require identifiable participants;
-        isolated relation words are not independent PIUs.
-        Extract original_pius once at the top level,
-        using consistent segmentation and 0-based indices.
+        Extract original_pius once, using consistent segmentation and
+        0-based indices. A PIU is a complete, text-supported visual fact.
+        Spatial relationships require identifiable participants.
 
-        For each level, independently verify preservation of all original
-        PIUs and identify valid added PIUs. Report preserved, added, and
-        issues separately.
+        For each level, independently check preservation of all original
+        PIUs, identify valid added PIUs, and report issues separately.
 
         Added PIUs must be relevant, novel, non-redundant, and visual.
         Synonyms, adjective stacking, and generic quality terms do not count.
-        Added PIU counts must strictly increase from Light to Medium to Rich,
-        with every level satisfying its own supplied range.
+
+        Required numbers of valid added PIUs relative to the source:
+        - Light: 0
+        - Medium: 2-4
+        - Rich: 5-8
+
+        Each level must satisfy its range. Higher levels need not include
+        lower-level additions, but all must remain consistent with the source.
+        Do not judge expansion by word count.
 
         Evidence must be a continuous, verbatim substring of the source;
         output_evidence must be a continuous, verbatim substring of the
         corresponding output. Preserve exact case and punctuation.
-        Do not translate or combine evidence fragments.
+        Do not translate or combine fragments.
         original_index must cover all original PIUs without duplicates.
 
-        Levels are independent: added details may differ or conflict
-        across levels, provided each remains consistent with the source.
-        Higher levels need not include lower-level additions.
-        Do not judge expansion by word count.
-
-        Light may have no additions; this is valid, and meaningful_addition
-        should be true when no meaningless additions exist.
+        Light with no additions is valid; set meaningful_addition to true
+        when no meaningless additions exist.
         Mark insufficient_expansion_space when source constraints prevent
         the required additions.
 
-        If validation fails, retry_levels must contain every problematic
-        level; otherwise it must be empty. Provide specific, actionable
-        feedback without generating replacement prompts.
+        On failure, retry_levels must include every failing level;
+        otherwise it must be empty. Provide actionable feedback without
+        generating replacement prompts.
     """).strip(),
 }
 
