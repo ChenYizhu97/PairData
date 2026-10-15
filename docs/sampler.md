@@ -1,47 +1,36 @@
-# 五维采样
+# 采样
 
 **中文** | [English](sampler.en.md) · [首页](../README.md)
 
-采样决定 Source Generation 的输入条件与计划分布。Generate Source 根据这些条件模拟自然、多样的用户文生图请求；blind_sampler_validation 只检查实际保留的条件。采样覆盖不同主题、表达与语言，文本是否自然仍由生成与校验共同约束。
+Source 和 Target 分别使用 `samplers/source.yaml` 和 `samplers/target.yaml`。在 recipe.yaml 的阶段配置中使用 `sampler: samplers/source.yaml` 或 `sampler: samplers/target.yaml` 引用文件。字段独立采样，每个阶段首次生成前采样一次并记录；Target 在 Source 通过后采样。
 
-## 维度与默认值
+每个 sampler 文件直接声明字段，例如：
 
-| 维度 | 控制内容 | 选项与权重 |
-| --- | --- | --- |
-| `domain` | 描述的主题领域 | `people` 0.20, `animals` 0.15, `objects` 0.15, `scenes` 0.15, `plants_food` 0.10, `vehicles` 0.10, `art_design` 0.10, `cultural_abstract` 0.05 |
-| `focus` | 主要描述的视觉方面 | `subject` 0.20, `action` 0.20, `scene` 0.15, `relation` 0.15, `composition` 0.15, `aesthetic` 0.15 |
-| `specificity` | 明确给出的视觉信息量与精度 | `minimal` 0.40, `moderate` 0.60 |
-| `expression` | 用户描述的表达形式 | `keywords` 0.35, `natural` 0.40, `colloquial` 0.25 |
-| `language` | 用户描述使用的语言 | `zh` 0.75, `en` 0.15, `mixed` 0.10 |
-
-每个维度独立以 0.1 的概率被丢弃。保留时，按该维度的权重选择选项。所有维度都可能被丢弃，产生 `{}`。CLI 使用固定的丢弃概率，不提供覆盖参数。
-
-`expression` 控制关键词、自然句子或口语化请求。源描述以中文为主：保留语言维度时，默认语言权重为中文 75%、夹杂英文视觉关键词的中文 10%、英文 15%。这些选择由 `language` 独立控制。`mixed` 是语言选项，不是表达方式选项。语言维度被丢弃时不限制语言，校验器仍检查视觉内容和内容是否干净。
-
-被丢弃的维度不作为条件检查。`specificity` 控制源描述明确给出的视觉信息，扩写 `level` 控制英文提示词新增的视觉信息，两者独立。`minimal` 围绕一个主要主体或场景，最多增加一两个视觉细节；`moderate` 通常涉及外观、动作、环境或构图等两到四个方面，保留尚未指定的场景空间。这些是提供给模型的语义指导，不是程序按词数或 PIU 数量执行的硬阈值。两者都应简洁自然。
-
-## 任务规划与可复现性
-
-默认采样器随包提供，位于 `src/midasdata/sampler.json`，以包资源方式加载，无需在工作目录中放置采样器文件。选项解释是提供给模型的英文输入数据，会原样传递。
-
-采样使用由 seed 初始化的独立 `random.Random`。任务按维度顺序（`domain`、`focus`、`specificity`、`expression`、`language`）采样，并在 worker 启动前写入 `tasks.jsonl`，因此响应顺序、技术重试和质量修订不会改变采样序列。质量修订保留任务 ID 和采样条件。
-
-固定种子能复现采样，不能复现模型措辞或随机分配的运行 ID。原始响应保存在审计日志中。`--count` 表示计划任务数；拒绝不会触发补充采样。运行清单统计五个维度的计划分布和通过分布，缺失维度标为 `(dropout)`。没有采样元数据的扩写记录，在这些统计中也归入 `(dropout)`。
-
-## 采样配置契约
-
-自定义文件必须恰好包含五个维度键，每个维度的选项列表不能为空。每行结构为 `[option, explanation, weight]`。例如：
-
-```json
-{
-  "domain": [["animals", "Animals and creatures", 1.0]],
-  "focus": [["subject", "Focus on the subject", 1.0]],
-  "specificity": [["minimal", "One main visual idea", 1.0]],
-  "expression": [["natural", "Natural-language description", 1.0]],
-  "language": [["en", "User descriptions written entirely in English", 1.0]]
-}
+```yaml
+language:
+  type: categorical
+  dropout: 0.1
+  choices:
+    - value: zh
+      weight: 3.0
+    - value: en
+      weight: 1.0
+limit:
+  type: integer
+  min: 10
+  max: 30
 ```
 
-启动校验要求选项字符串受支持且不重复、解释字符串不为空白、权重为有限的非负数。布尔值不能作为权重，每个维度的权重之和必须在绝对误差 `1e-9` 内等于 1。允许零权重选项。
+`categorical` 按权重选择一个 JSON 值，权重默认为 1。权重必须有限且非负，总和必须为正，程序归一化；候选值不得重复。value 可以是字符串、数值、布尔值、null、数组或对象。
 
-自定义采样器可以修改权重或选择现有选项的子集，不能添加新维度或枚举值。`null` 不是合法采样选项。维度缺失只由丢弃产生，在采样字典中表现为省略该维度。修改采样器的任何内容（包括解释）都需要新建运行，因为整个采样器参与恢复指纹计算。
+`integer` 从包含上下界的整数区间均匀采样。每个字段都有可选的 dropout，范围 0–1，默认 0。丢弃的字段不会出现在 sample 中；sampler 文件内容为 `{}` 时产生空对象。字段名使用字母或下划线开头的简单标识符。文件在启动时校验，并纳入配置快照与恢复指纹。
+
+确定性随机种子来自用户 seed、稳定任务序号、阶段与字段名；不依赖完成顺序或字段声明顺序。运行 ID 仍随机生成。固定 seed 复现采样，不保证模型措辞可复现。
+
+质量重生成、技术重试和恢复都保留原 sample。Source 被拒绝时，该任务不会产生 Target sample。
+
+Manifest 的 distributions 对每阶段记录 sampled_tasks、not_reached，以及 sampled / stage_passed / exported 三种分布。值使用 JSON 编码作为统计键；缺失字段记为 `(dropout)`。未进入阶段的任务单独计数，不记为字段 dropout。
+
+count 表示计划任务数；拒绝不补齐。质量过滤会改变最终分布，通过上述统计提供可见性，不做配额补齐或自动调权。
+
+`examples/prompt_pairs/` 使用五维 Source 分布及 0.1 dropout。Target 的 expansion 字段选出一个包含 target/min/max 的对象：目标为 0、2–4 或 5–8；三个区间的总权重相等，区间内各目标等权。这些都是 recipe 数据，运行时没有固定档位。

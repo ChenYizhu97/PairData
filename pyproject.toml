@@ -3,25 +3,28 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "midasdata"
-version = "0.1.6"
-description = "Auditable Chinese-first visual prompt SFT generation and English expansion"
+name = "pairdata"
+version = "0.0.0"
+description = "Configurable source-target dataset synthesis with LangGraph"
 requires-python = ">=3.11"
 dependencies = [
   "langgraph>=1.0,<2",
   "langchain-core>=1.0,<2",
   "langchain-openai>=1.0,<2",
   "pydantic>=2.10,<3",
+  "pyyaml>=6,<7",
+  "jinja2>=3.1,<4",
+  "jsonschema>=4.23,<5",
 ]
 
 [project.scripts]
-midasdata = "midasdata.cli:main"
+pairdata = "pairdata.cli:main"
 
 [dependency-groups]
 dev = ["ruff>=0.12"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/midasdata"]
+packages = ["src/pairdata"]
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -31,7 +34,8 @@ include = [
   "/scripts",
   "/README.md",
   "/README.en.md",
-  "/config.example.toml",
+  "/recipes",
+  "/examples",
   "/pyproject.toml",
   "/uv.lock",
 ]

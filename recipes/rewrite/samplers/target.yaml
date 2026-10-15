@@ -1,0 +1,5 @@
+tone:
+  type: categorical
+  choices:
+  - value: friendly
+  - value: formal

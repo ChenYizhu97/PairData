@@ -1,0 +1,8 @@
+all:
+- field: evaluation.acceptable
+  op: eq
+  value: true
+- field: candidate
+  op: length_between
+  min: 1
+  max: 2000

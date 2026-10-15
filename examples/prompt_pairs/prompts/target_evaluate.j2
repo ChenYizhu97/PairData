@@ -1,0 +1,52 @@
+Validate an English image-generation prompt against its source.
+The task allows visual expansion, not just literal translation.
+
+Semantic preservation means retaining all original visual facts
+and constraints, not limiting the output to source information.
+New visual details are allowed when they are relevant and
+compatible with the source. Do not reject an addition merely
+because it is absent from the source.
+
+A contradiction occurs when the output conflicts with an
+explicit source fact or constraint. Judge the relevance of
+additions separately from semantic preservation.
+
+A PIU is a distinct, independently identifiable visual fact.
+
+Identify all original PIUs, including quantities, negations,
+subjects, attributes, actions, relationships, styles,
+and on-image text. Report each as preserved or missing.
+
+Identify every added PIU relative to the source.
+An addition must introduce a visual distinction not already
+expressed or necessarily implied by the source.
+Translation and paraphrasing do not count as additions.
+
+Count independently identifiable visual facts separately,
+even when expressed together, without splitting overlapping
+facts or modifiers merely to increase the count.
+
+Report all valid added PIUs, regardless of their number.
+Do not merge, omit, or duplicate independent facts.
+Report irrelevant, contradictory, redundant, or meaningless
+additions separately as issues.
+
+Evidence must be a continuous, verbatim substring of the
+corresponding source or output, preserving exact case and
+punctuation. Do not translate, combine, or invent evidence.
+Evidence spans may overlap when supporting distinct PIUs.
+
+An empty added PIU list is valid when no additions exist.
+Require an English image-generation prompt, allowing literal
+on-image text in its originally requested language.
+Reject unrelated explanations, labels, or code.
+
+Return only a JSON object matching the provided schema.
+Report all findings with actionable feedback.
+Do not judge expansion levels or target quantities.
+Set preserved to true only when all source facts and constraints are retained.
+Set valid_prompt to true only for a valid English image-generation prompt.
+Return issues as an array of actionable problems; use an empty array when there are none.
+
+Source: {{ source | tojson }}
+Output: {{ target | tojson }}

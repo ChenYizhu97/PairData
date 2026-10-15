@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "source_generate",
+  "type": "object",
+  "properties": {
+    "concept": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "concept",
+    "prompt"
+  ],
+  "additionalProperties": false
+}

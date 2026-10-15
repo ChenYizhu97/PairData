@@ -1,80 +1,108 @@
-# 运行参考
+# 配置与运行
 
 **中文** | [English](running.en.md) · [首页](../README.md)
 
-本页集中记录环境、配置、运行和检查命令。项目目标与业务流程见[项目概览](../README.md)，状态、路由和恢复机制见[工作流设计](workflows.md)。
-
-## 安装与运行
-
-需要 Python 3.11+、uv 和支持文件锁及目录 fsync 的 POSIX 环境。
+在项目根目录运行时，默认读取 `recipes/rewrite/recipe.yaml`；复杂示例位于 `examples/prompt_pairs/`，通过 `--recipe` 选择。复制整个 recipe 目录后修改文件即可定义新任务。`check` 验证固定配置、sampler、模板变量、Schema 与规则结构，不调用模型；它不验证服务凭据，也不能提前判断所有运行时数据路径。
 
 ```bash
-uv sync --locked
-uv run midasdata generate --help
-uv run midasdata expand --help
+uv run pairdata check
+uv run pairdata run --count 20 --seed 42 --out runs/rewrite
 ```
 
-在工作目录的 `.env` 中配置模型：
+## Recipe 顶层
 
-```dotenv
-OPENAI_BASE_URL=https://your-service.example/v1
-MODEL_NAME=your-model
-OPENAI_API_KEY=your-secret
+```yaml
+name: my_recipe
+models:
+  generator:
+    temperature: 0.8
+  evaluator:
+    temperature: 0.0
+runtime:
+  concurrency: 4
+  timeout: 120.0
+  max_request_attempts: 5
+  retry_initial: 1.0
+  retry_max: 30.0
+  preview_page_size: 100
 ```
 
-```bash
-uv run midasdata generate --count 100 --seed 42 --out runs/generated
-uv run midasdata expand --input runs/generated/data.jsonl --out runs/expanded
+`source` 和 `target` 阶段为必填。每个阶段使用自己的 sampler 文件、生成调用、评估调用、decision 和生成预算。sampler 文件内容可为 `{}`；max_generations 默认 3，max_request_attempts 默认 5，都包含第一次。
+
+模型配置支持 `model`、`base_url`、`api_key_env`、`temperature`、`structured_output`（`json` / `native`）、`reasoning_effort`、`extra_body`。未指定 model/base_url 时读取 `MODEL_NAME` / `OPENAI_BASE_URL`。模型配置可使用 `${ENV_NAME}` 插值；凭据由 `api_key_env` 指定的环境变量提供，默认 `OPENAI_API_KEY`。
+
+服务专有参数通过 `extra_body` 显式设置，运行时不会根据服务域名覆盖模型选项。
+
+环境优先级：进程环境 > `--env-file`（默认 `.env`）；模型配置覆盖环境默认值；CLI 的并发、超时和预览分页覆盖 recipe.runtime。环境文件按文本解析，不执行 shell，不修改进程环境。
+
+## 阶段配置
+
+```yaml
+target:
+  sampler: samplers/target.yaml
+  max_generations: 3
+  generate:
+    model: generator
+    inputs:
+      source: {ref: source}
+      sample: {ref: sample}
+      previous: {ref: previous}
+      feedback: {ref: feedback}
+    messages:
+      - role: user
+        template: prompts/target_generate.j2
+    response_schema: schemas/target_generate.json
+    output_path: text
+  evaluate:
+    model: evaluator
+    inputs:
+      source: {ref: source}
+      target: {ref: candidate}
+      sample: {ref: sample}
+    messages:
+      - role: user
+        template: prompts/target_evaluate.j2
+    response_schema: schemas/target_evaluate.json
+  decision: rules/target.yaml
 ```
 
-也可以复制 [config.example.toml](../config.example.toml)，通过 `--config config.toml` 设置独立生成器、校验器及 PIU 范围。配置优先级为 CLI > TOML > 环境默认值 > 内置默认值。
+Source 同样指定 `sampler: samplers/source.yaml`。`samplers/target.yaml` 独立定义采样字段：
 
-环境变量使用 `OPENAI_BASE_URL`、`MODEL_NAME`、`OPENAI_API_KEY`。进程环境优先于 `.env`。`.env` 按文本解析，配置加载不修改进程环境。`--env-file` 可以指定其他文件。TOML 的 `${ENV_NAME}` 支持嵌套插值。
+```yaml
+tone:
+  type: categorical
+  choices:
+    - value: friendly
+    - value: formal
+```
 
-`--model` 只覆盖生成器，`--validator-model` 只覆盖校验器；`--base-url` 和 `--structured-output` 覆盖两个角色。模型配置支持 `temperature`、`reasoning_effort`、`extra_body` 和 `api_key_env`。DeepSeek 的两个角色默认关闭 thinking，显式设置优先。
+生成和评估都可以配置 `system` / `user` 消息列表。每条消息指定一个模板文件；运行时附加响应 JSON Schema 指令。sampler、模板、Schema、规则文件路径相对 recipe.yaml，必须位于其目录内。不支持模板 include/import/extends，也禁用 random 过滤器，随机性由 sampler 管理。
 
-| 配置 | 默认值 |
+`inputs` 的值可以是 JSON 常量，或完整形式的 `{ref: field.path}`。引用只在输入绑定的顶层解析。路径支持 `sample.tone`、`generation.items[0].text`；output_path 还可使用 `$` 提取整个响应对象。
+
+| 调用 | 可引用的数据 |
 | --- | --- |
-| `concurrency` | 4 个同时在途的模型请求 |
-| `timeout` | 每请求 120 秒 |
-| `preview_page_size` | 每页 100 个完成样本 |
-| `retry_initial` / `retry_max` | 退避 1 / 30 秒 |
-| 新增 PIU 范围 | Light 0；Medium 2–4；Rich 5–8 |
+| Source generate | `sample`、`previous`、`feedback` |
+| Source evaluate | `sample`、`generation`、`candidate` |
+| Target generate | `source`、`sample`、`previous`、`feedback` |
+| Target evaluate | `source`、`sample`、`generation`、`candidate` |
 
-`structured_output="json"` 解析模型 JSON 文本，`"native"` 使用服务的 JSON Schema 接口。两种模式执行相同响应契约。服务不支持的接口等非重试 HTTP 错误会停止运行。
+`generation` 是当前完整生成响应，`candidate` 是 output_path 提取的值。两个阶段首次生成的 previous/feedback 均为 null；重生成时 previous 是该阶段上一轮候选，feedback 包含上一轮 evaluation/decision。recipe 可选择绑定并在模板中使用。Target sample 是 Target 自己的采样，source 是已通过的候选内容；Source 的采样与评估记录不在 Target 输入上下文中。
 
-`--count` 表示计划任务数，拒绝任务不会补齐。扩写输入格式及字段限制见[数据契约](data.md)。自定义采样器通过 `--sampler` 指定，其结构见[采样设计](sampler.md)：
+模板只看到 inputs 中的变量。未定义变量会报错；可选采样字段请在 Jinja2 中使用 `default` 或 `is defined`。模板引用 JSON 对象、数组时可用 `tojson`，例如 `{{ source | tojson }}`。
 
-```bash
-uv run midasdata generate --count 10 --seed 42 --sampler custom-sampler.json --out runs/sampler-check
-```
-
-## 恢复与产物
-
-新运行使用尚不存在的输出目录，中断后使用原参数加 `--resume`：
+## 恢复
 
 ```bash
-uv run midasdata generate --count 100 --seed 42 --out runs/generated --resume
-uv run midasdata expand --input runs/generated/data.jsonl --out runs/expanded --resume
+uv run pairdata run --recipe recipes/rewrite/recipe.yaml --count 20 --seed 42 --out runs/rewrite --resume
 ```
 
-恢复跳过已提交的通过和拒绝样本，重放未提交任务并复用保存的模型响应，保留技术和生成预算。可以改变并发数和预览页大小；其他配置、输入、采样器及提示词必须匹配。密钥值不进入指纹和配置快照。
+新运行要求输出目录不存在。恢复要求请求、模型配置、sampler、模板、Schema 和规则一致，仅并发与预览分页可以改变。API 密钥值不进入指纹。recipe.json 保存展开 sampler 后的配置与资源内容快照；恢复时重新加载提供的 recipe 并检查指纹。
 
-运行文件及其职责见[运行产物](data.md#运行产物)。派生输出可以从已提交结果重建，原子替换以单个文件为单位。
-
-直接用浏览器打开 `preview.html` 查看源文本、三档输出、失败原因和证据。预览离线可用，大运行按页显示，搜索和筛选作用于当前页。模型文本按文本渲染。
+`--count` 为计划任务数，不保证最终通过数。拒绝任务不会自动补齐。`--concurrency` 控制整个运行中的在途模型请求数。
 
 ```bash
-uv run python scripts/review_samples.py runs/expanded --out runs/expanded-review.csv
+uv run python scripts/review_samples.py runs/rewrite --out runs/rewrite-review.csv
 ```
 
-评审 CSV 保留空的人工判断字段，不自动批准样本。自动通过率不能代替模型质量评估和人工复核。
-
-## 必要测试
-
-离线测试覆盖关键流程、单档预算与盲校验边界、并行汇合、证据归属、模型与普通操作的执行恢复、技术重试、配置隔离、输入边界和导出。不测试固定提示词措辞，不调用远程模型，不读取项目数据集。
-
-```bash
-uv run --locked python -m unittest discover -s tests -v
-uv run --locked ruff check .
-```
+CSV 提供空白人工评审栏。预览在浏览器中离线打开；搜索与状态筛选只作用于当前页。

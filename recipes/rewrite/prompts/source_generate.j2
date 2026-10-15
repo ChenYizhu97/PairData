@@ -1,0 +1,7 @@
+Write a short, plausible English message about {{ sample.topic }}. Include a concrete fact the recipient needs. Return it in text.
+
+{% if feedback is not none %}
+Revise the previous response to address the evaluation and rule feedback, while following the same sampled requirements.
+Previous response: {{ previous | tojson }}
+Feedback: {{ feedback | tojson }}
+{% endif %}

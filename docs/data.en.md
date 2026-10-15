@@ -1,74 +1,42 @@
-# Data contracts and provenance
+# Data contracts and audit
 
 [中文](data.md) | **English** · [Home](../README.en.md)
 
-JSONL files use UTF-8, with one JSON object per nonblank line. Business record models reject unknown fields, empty or whitespace-only IDs and prompts, and unsupported levels. IDs and prompts are stripped of leading and trailing whitespace.
-
-## Business records
-
-Source-description generation exports:
+Each data.jsonl row contains exactly source and target:
 
 ```json
-{"id":"gen:run001:000001","sample":{"domain":"animals"},"prompt":"一只橘猫趴在窗边"}
+{"source": "The meeting starts at 10.", "target": "Please join the meeting at 10."}
 ```
 
-The example describes one orange cat lying by a window. `sample` supports `domain`, `focus`, `specificity`, `expression`, and `language`; specificity is `minimal | moderate`, language is `zh | en | mixed`, and expression is `keywords | natural | colloquial`. Source prompts are primarily Chinese, with some Chinese mixed with English keywords and some English. Dropped dimensions are omitted from `sample`; `{}` is valid. The chosen visual concept is retained in internal results, audit responses, and lineage, but is not part of the business record. Generated IDs contain the run ID and a stable task sequence number.
-
-Expansion accepts the external input:
-
-```json
-{"id":"gen:run001:000001","prompt":"一只橘猫趴在窗边"}
-```
-
-The CLI accepts either this `InputPrompt` shape or a `SourcePromptRecord` with `sample`. It validates the input, saves its full accepted shape in the task list, and projects it to `task_id` and `source_prompt` before invoking the graph. Bare source records have no sampling metadata; the runner still records the resolved input path as their origin. Input IDs must be unique after whitespace normalization. Arbitrary extra input metadata is not accepted.
-
-Expansion exports:
-
-```json
-{"id":"gen:run001:000001","level":"light","prompt":"An orange cat lying by a window."}
-```
-
-`level` is `light | medium | rich`, and `(id, level)` identifies an expanded record. Three rows are exported only if the entire group passes. Rows within a group are ordered Light, Medium, Rich; groups follow input order.
-
-`sft.jsonl` uses the template defined in `prompts.py`. Each row contains a `messages` array with three roles: system describes the expansion task, user supplies `Expansion level: <level>\nSource description: <source>`, and assistant contains the accepted English prompt. The system and user task instructions are English. The template uses the language-neutral label `Source description:`; source text is preserved as received. IDs and levels are not separate fields in the SFT row; the level is in the user message. Business and SFT exports are derived from the same committed results. There is no automatic train/validation split, deduplication, or merging.
+Values come from each generation's output_path and are constrained by recipe schemas. They may be text or structured JSON. Business rows contain no IDs, samples, levels or messages. Only tasks with two accepted stages export a row, in planned task order. No automatic deduplication, replacement or dataset splitting is performed.
 
 ## Run artifacts
 
-| Path | Content |
+| File | Contents |
 | --- | --- |
-| `tasks.jsonl` | Stable, validated task sequence saved before model requests |
-| `results/<sha256(id)>.json` | Complete terminal `TaskResult`, atomically committed per sample; expansion includes the entire group |
-| `data.jsonl` | Business records for passed samples only |
-| `sft.jsonl` | Training messages for passed expansion groups only |
-| `sources.json` | Source type, request/input digest, sampler, and software version |
-| `lineage.jsonl` | Original task metadata, internal concept, and terminal status for every committed sample |
-| `audit.jsonl` | Request attempts, raw responses and usage, successfully validated output snapshots, node quality decisions, and errors; created on the first event |
-| `rejected.jsonl` | Full rejected sample results, including reasons and available intermediate details |
-| `manifest.json` | Configuration without API key values, request/task/prompt digests, software version, run status, and export statistics |
-| `run.lock` | Run directory lock file; the OS lock is released when the store closes, and the file remains |
-| `preview.html`, `preview/page-*.html` | Standalone browser preview and optional pages of completed samples |
+| tasks.jsonl | Stable IDs and task indices |
+| results/<sha256(id)>.json | Atomic terminal task results |
+| data.jsonl | Accepted source-target pairs |
+| lineage.jsonl | Task ID, status and one-based data.jsonl row number |
+| rejected.jsonl | Rejected tasks and current stage details |
+| audit.jsonl | Sampling, requests, raw responses, parsing successes, decisions, errors |
+| recipe.json | Configuration with expanded samplers and referenced resource text |
+| manifest.json | Configuration, fingerprint, status, usage, distributions |
+| run.lock | Operating-system directory lock |
+| preview.html, preview/ | Offline comparison and evaluation details |
 
-Audit events distinguish `technical_attempt` (at most five within one logical model operation) from `generation_attempt` (at most three per source sample or English level). `logical_call_id` is derived from sample ID, stage, level, round, and generation attempt. Each request saves an input payload digest to detect inconsistent replay. Token statistics aggregate integer usage fields returned by the service; absent usage remains empty, and costs are not estimated.
+TaskResult contains id, status, source, target and reason. Each StageResult retains sample, generation_attempt, generation, candidate, evaluation, decision, status and reason. Target is null until reached. Task statuses are passed/rejected; stage statuses are pending/passed/quality_failed/technical_failed.
 
-The runner, execution layer and workflow nodes write through `RunStore` synchronously in the event loop. Each audit append is flushed and fsynced; the request event is durable before the model request starts. Task files, manifests, source metadata, committed results, exports, and previews use temporary files, fsync, atomic replacement, and directory fsync. Replacement is atomic per file, not across all exported files; resume rebuilds exports after an interruption. `run.lock` prevents two processes from writing the same run concurrently.
+Recipe schemas validate dynamic responses; Pydantic validates fixed internal records. Accepted tasks require both stage statuses and decisions to pass.
 
-## Internal result structure
+## Persistence
 
-`TaskResult.workflow` selects the record and detail types:
+OperationEvent contains run_id, sample_id, stage, logical_call_id, generation_attempt, technical_attempt, model, timestamp, event and data. Stage names include source.sample, target.generate, target.evaluate and target.gate.
 
-| Workflow | `records` | `details` |
-| --- | --- | --- |
-| `generate` | `SourcePromptRecord` list | `SourceGenerationDetails`: draft `prompt`, current `validation` and `decision`, `generation_attempt`, and `feedback` |
-| `expand` | `ExpandedPromptRecord` list | `PromptExpansionDetails`: `round`, `levels`, and programmatic `group_decision` |
+Request payloads retain explicit inputs, actual messages and response schemas. Raw responses are saved before validation. Source and Target Generate can bind previous/feedback. Target can also bind the accepted source and retains its own sample across regeneration.
 
-Each entry in `PromptExpansionDetails.levels` is an `ExpansionResult` with level, round, generation attempt, sampled `target_added_pius`, status, prompt, optional blind validation and code decision, and reason. Its status is `passed`, `quality_failed`, or `technical_failed`. These are single-level statuses; the enclosing sample status is `passed` or `rejected`.
+Decisions contain passed, reasons and checks. Checks record paths, operators, actual/expected values, outcomes and optional errors. Sampling and decisions do not consume model tokens. Usage sums integer fields actually reported by model responses.
 
-Records and details from the wrong workflow and unknown nested fields are rejected. `source` allows extensible provenance metadata. Storage, export, and the review script read typed models; preview generation serializes them to embedded JSON.
+Audit appends flush/fsync. File replacement uses temporary files, fsync, atomic rename and directory fsync. Atomicity is per file; derived exports rebuild on resume.
 
-Optional detail fields are fully serialized with their defaults, including `null` for absent validation and decisions. Dropped dimensions are omitted only from business records' `sample`. The blind report stores semantic `passed`, `reason`, and independently identified `added_pius`; the code decision stores final `passed`, rule failure reasons, and `added_count`. The count is the blind list length; evidence or duplicate problems still reject the list. Each PIU contains only `fact` and `output_evidence`, without an ID or index. Artifacts are read and written using the current contracts in `schemas.py`.
-
-When a new draft replaces old text, its current validation and decision are cleared until that draft is validated. Previous evidence remains in `audit.jsonl`. Every expansion generation uses the original Source and initially sampled target count; `reason` records the explanation for the result. A single group decision is produced after all three levels pass.
-
-Teacher generation requests use an integer `target_added_pius` sampled from the level's range, without sending the range; generator responses contain only `prompt`. Request audits and per-level results retain the target count, which is absent from blind validation requests. Business records and SFT user messages retain `level` as the training target. `group_check` produces only a programmatic quality decision event, with no model response.
-
-Software and workflow versions are included in manifests and recovery fingerprints. Internal graph states live beside their workflow nodes, not in `schemas.py`.
+Credential values come from environment variables and are excluded from snapshots and fingerprints. Audit retains business content for traceability.

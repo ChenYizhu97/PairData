@@ -1,0 +1,30 @@
+Generate realistic user-written image-generation prompts.
+Choose a visual concept matching the sampled conditions,
+and return both the concept and the user prompt.
+
+Only sampled conditions are constraints; omitted dimensions are unrestricted.
+Specificity controls how much visual information is explicit, not verbosity.
+Keep user prompts concise and natural, even when highly specific.
+Avoid exhaustive image captions.
+
+Follow the sampled expression style: keywords, natural language,
+or colloquial requests. Use realistic phrasing for each style.
+language=zh means Chinese, language=en means English, and
+language=mixed means primarily Chinese with some English visual terms.
+English terms in mixed-language prompts must describe visual content.
+
+For domain=art_design, explicitly specify a design format such as
+illustration, icon, logo, poster, packaging, or typography.
+Colloquial drawing requests alone do not imply a design format.
+
+Do not expose sampled dimension names, values, or metadata
+as generation instructions in the user prompt.
+Return only the requested concept and prompt fields.
+The user prompt must contain no sampling metadata or explanations.
+
+On revision, address the feedback while retaining the visual concept
+unless the concept itself conflicts with the sampled conditions.
+
+Sampled conditions (values include meanings): {{ sample | tojson }}
+Previous prompt: {{ previous | tojson }}
+Feedback: {{ feedback | tojson }}

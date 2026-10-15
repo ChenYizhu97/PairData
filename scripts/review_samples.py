@@ -1,15 +1,11 @@
-"""从已提交任务生成供人工填写的评审 CSV。
-
-Generate a review CSV from committed tasks for manual assessment.
-"""
+"""Export completed source-target tasks to a CSV for manual review."""
 
 import argparse
 import csv
 import json
 from pathlib import Path
 
-from midasdata.schemas import PromptExpansionDetails, SourceGenerationDetails
-from midasdata.storage import RunStore
+from pairdata.storage import RunStore
 
 
 def main():
@@ -20,42 +16,33 @@ def main():
     args.out.parent.mkdir(parents=True, exist_ok=True)
     fields = [
         "id",
-        "workflow",
-        "automatic_status",
+        "status",
         "source",
-        "sample",
-        "light",
-        "medium",
-        "rich",
-        "automatic_reason",
-        "human_semantics",
-        "human_piu",
-        "false_accept_or_reject",
+        "target",
+        "source_sample",
+        "target_sample",
+        "reason",
+        "human_judgment",
         "reviewer",
         "notes",
     ]
-    store = RunStore(args.run)
     with args.out.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fields)
         writer.writeheader()
-        for result in store.results():
-            prompts = {}
-            source_prompt = result.source.get("prompt", "")
-            if isinstance(result.details, PromptExpansionDetails):
-                prompts = {
-                    level: expansion.prompt for level, expansion in result.details.levels.items()
-                }
-            elif isinstance(result.details, SourceGenerationDetails):
-                source_prompt = result.details.prompt
+        for result in RunStore(args.run).results():
             writer.writerow(
                 {
                     "id": result.id,
-                    "workflow": result.workflow,
-                    "automatic_status": result.status,
-                    "source": source_prompt,
-                    "sample": json.dumps(result.source.get("sample", {}), ensure_ascii=False),
-                    **prompts,
-                    "automatic_reason": result.reason,
+                    "status": result.status,
+                    "reason": result.reason,
+                    "source": json.dumps(result.source.candidate, ensure_ascii=False),
+                    "target": json.dumps(result.target.candidate, ensure_ascii=False)
+                    if result.target
+                    else "",
+                    "source_sample": json.dumps(result.source.sample, ensure_ascii=False),
+                    "target_sample": json.dumps(result.target.sample, ensure_ascii=False)
+                    if result.target
+                    else "",
                 }
             )
 

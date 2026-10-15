@@ -1,2 +1,0 @@
-# Include every release artifact despite the parent run-artifact ignores.
-!*

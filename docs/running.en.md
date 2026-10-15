@@ -1,80 +1,104 @@
-# Running the project
+# Configuration and running
 
 [中文](running.md) | **English** · [Home](../README.en.md)
 
-This page collects environment requirements, configuration, run commands, and checks. See the [project overview](../README.en.md) for goals and business flows, and [workflow design](workflows.en.md) for state, routing, and recovery mechanisms.
-
-## Installation and usage
-
-Requires Python 3.11+, uv, and a POSIX environment with file locking and directory fsync support.
+From the project root, commands default to `recipes/rewrite/recipe.yaml`. Select the complex example in `examples/prompt_pairs/` with `--recipe`. Copy an entire recipe directory to define a new task. `check` validates configuration, samplers, template variables, schemas and rules without calling models. It does not check service credentials or resolve every runtime data path.
 
 ```bash
-uv sync --locked
-uv run midasdata generate --help
-uv run midasdata expand --help
+uv run pairdata check
+uv run pairdata run --count 20 --seed 42 --out runs/rewrite
 ```
 
-Configure the model in a `.env` file in the working directory:
+## Top-level recipe
 
-```dotenv
-OPENAI_BASE_URL=https://your-service.example/v1
-MODEL_NAME=your-model
-OPENAI_API_KEY=your-secret
+```yaml
+name: my_recipe
+models:
+  generator:
+    temperature: 0.8
+  evaluator:
+    temperature: 0.0
+runtime:
+  concurrency: 4
+  timeout: 120.0
+  max_request_attempts: 5
+  retry_initial: 1.0
+  retry_max: 30.0
+  preview_page_size: 100
 ```
 
-```bash
-uv run midasdata generate --count 100 --seed 42 --out runs/generated
-uv run midasdata expand --input runs/generated/data.jsonl --out runs/expanded
+Both source and target stages are required. Each has its own sampler file, generate/evaluate calls, decision and generation budget. A sampler file containing `{}` is valid. Defaults: 3 generations per stage and 5 requests per logical operation, including initial attempts.
+
+Models support model, base_url, api_key_env, temperature, structured_output (`json` or `native`), reasoning_effort and extra_body. Missing model/base_url use MODEL_NAME / OPENAI_BASE_URL. Model configuration supports `${ENV_NAME}` substitution; api_key_env names the credential variable, defaulting to OPENAI_API_KEY.
+
+Set provider-specific options explicitly in extra_body; the runtime does not override model options based on provider domains.
+
+Process environment overrides `--env-file` (default `.env`); model configuration overrides environment defaults. CLI concurrency, timeout and preview page size override recipe.runtime. Environment files are parsed as text without shell execution or changes to process environment.
+
+## Stage configuration
+
+```yaml
+target:
+  sampler: samplers/target.yaml
+  max_generations: 3
+  generate:
+    model: generator
+    inputs:
+      source: {ref: source}
+      sample: {ref: sample}
+      previous: {ref: previous}
+      feedback: {ref: feedback}
+    messages:
+      - role: user
+        template: prompts/target_generate.j2
+    response_schema: schemas/target_generate.json
+    output_path: text
+  evaluate:
+    model: evaluator
+    inputs:
+      source: {ref: source}
+      target: {ref: candidate}
+      sample: {ref: sample}
+    messages:
+      - role: user
+        template: prompts/target_evaluate.j2
+    response_schema: schemas/target_evaluate.json
+  decision: rules/target.yaml
 ```
 
-You can also copy [config.example.toml](../config.example.toml) and use `--config config.toml` to configure separate generator and validator models and PIU ranges. Configuration precedence is CLI > TOML > environment defaults > built-in defaults.
+Source similarly references `samplers/source.yaml`. Define Target fields separately in `samplers/target.yaml`:
 
-The environment variables are `OPENAI_BASE_URL`, `MODEL_NAME`, and `OPENAI_API_KEY`. Process environment variables take precedence over `.env`. The `.env` file is parsed as text; loading configuration does not modify the process environment. Use `--env-file` to select another file. TOML supports `${ENV_NAME}` interpolation in nested values.
+```yaml
+tone:
+  type: categorical
+  choices:
+    - value: friendly
+    - value: formal
+```
 
-`--model` overrides only the generator, and `--validator-model` overrides only the validator; `--base-url` and `--structured-output` override both roles. Model configuration supports `temperature`, `reasoning_effort`, `extra_body`, and `api_key_env`. Thinking is disabled by default for both DeepSeek roles; explicit settings take precedence.
+Generate and evaluate support lists of system/user messages, each referring to a Jinja2 file. The runtime adds the response-schema instruction. Samplers, templates, schemas and rules are relative to recipe.yaml and must remain inside its directory. Template includes, imports and inheritance are unsupported. The random filter is disabled; randomness belongs to the sampler.
 
-| Setting | Default |
+Input values are JSON constants or `{ref: field.path}` references, resolved only at the top level of each binding. Paths support object fields and explicit indices, such as generation.items[0].text. output_path also supports `$` for the complete response.
+
+| Call | Available references |
 | --- | --- |
-| `concurrency` | 4 model requests in flight |
-| `timeout` | 120 seconds per request |
-| `preview_page_size` | 100 completed samples per page |
-| `retry_initial` / `retry_max` | 1 / 30 seconds of backoff |
-| Added PIU ranges | Light 0; Medium 2–4; Rich 5–8 |
+| Source generate | sample, previous, feedback |
+| Source evaluate | sample, generation, candidate |
+| Target generate | source, sample, previous, feedback |
+| Target evaluate | source, sample, generation, candidate |
 
-`structured_output="json"` parses the model's JSON text, while `"native"` uses the service's JSON Schema interface. Both modes enforce the same response contracts. Nonretryable HTTP errors, such as an unsupported service interface, stop the run.
+generation is the complete current response; candidate is the extracted value. Both stages start with null previous/feedback. On regeneration, previous contains that stage's prior candidate, and feedback contains its evaluation/decision. Bind these optionally in the recipe and use them in templates. Target uses its own sample and the accepted Source candidate; Source sampling and evaluation records are outside Target's input context.
 
-`--count` is the planned task count; rejected tasks are not replaced. See [data contracts](data.en.md) for expansion input formats and field constraints. Use `--sampler` to select a custom sampler, whose structure is described in [sampling design](sampler.en.md):
+Templates see only explicitly bound variables. Undefined variables raise errors. Use Jinja2 default or is defined for optional sampled fields, and tojson for JSON values.
 
-```bash
-uv run midasdata generate --count 10 --seed 42 --sampler custom-sampler.json --out runs/sampler-check
-```
+## Resume and review
 
-## Recovery and outputs
+Repeat a run command with `--resume`. New runs require a nonexistent output directory. Resume requires matching requests, models, samplers, templates, schemas and rules. Concurrency and preview page size may change. Credential values are excluded from fingerprints. recipe.json archives configuration with expanded samplers and resource contents; the supplied recipe is reloaded and checked on resume.
 
-A new run requires an output directory that does not yet exist. After an interruption, use the original arguments with `--resume`:
+Count is the planned task count; rejected tasks are not replaced. Concurrency limits in-flight model requests across the whole run.
 
 ```bash
-uv run midasdata generate --count 100 --seed 42 --out runs/generated --resume
-uv run midasdata expand --input runs/generated/data.jsonl --out runs/expanded --resume
+uv run python scripts/review_samples.py runs/rewrite --out runs/rewrite-review.csv
 ```
 
-Recovery skips committed passed and rejected samples, replays uncommitted tasks using saved model responses, and preserves technical and generation budgets. Concurrency and preview page size may change; other configuration, inputs, the sampler, and prompts must match. API key values are excluded from fingerprints and configuration snapshots.
-
-See [run artifacts](data.en.md#run-artifacts) for the files and their purposes. Derived outputs can be rebuilt from committed results, with atomic replacement per file.
-
-Open `preview.html` directly in a browser to inspect source text, the three expansion levels, failure reasons, and evidence. The preview works offline and splits large runs into pages; search and filters apply to the current page. Model content is rendered as text.
-
-```bash
-uv run python scripts/review_samples.py runs/expanded --out runs/expanded-review.csv
-```
-
-The review CSV leaves human judgment fields blank and does not automatically approve samples. Automatic pass rates do not replace model quality evaluation and human review.
-
-## Essential tests
-
-Offline tests cover key flows, per-level budgets and blind validation boundaries, parallel branch convergence, evidence attribution, recovery of model and ordinary operations, technical retries, configuration isolation, input boundaries, and exports. They do not test fixed prompt wording, call remote models, or read project datasets.
-
-```bash
-uv run --locked python -m unittest discover -s tests -v
-uv run --locked ruff check .
-```
+Review columns are left empty for humans. preview.html is standalone and offline; search and status filtering apply to the current page.

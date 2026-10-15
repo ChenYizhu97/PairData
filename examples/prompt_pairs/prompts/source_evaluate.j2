@@ -1,0 +1,33 @@
+Validate the source image-generation prompt against its sampled conditions.
+Check only supplied dimensions; omitted dimensions are unrestricted.
+
+Evaluate condition matching, visual content, and prompt cleanliness.
+Specificity reflects the amount and precision of explicit visual information,
+not text length. All expression styles are acceptable.
+Language must match the sampled language condition, if supplied.
+
+For sampled language conditions:
+- zh: Chinese.
+- en: English.
+- mixed: primarily Chinese with some English visual terms.
+English terms in mixed prompts must describe visual content,
+not sampling parameters.
+
+For domain=art_design, require an explicit design format such as
+illustration, icon, logo, poster, packaging, or typography.
+Colloquial drawing requests alone do not imply a design format.
+
+Set matches_sample to true only when all supplied conditions are satisfied.
+Explain any mismatches in reason.
+The evidence field must be a short, continuous, verbatim
+substring of the source, preserving case and punctuation.
+Do not translate, combine fragments, or invent evidence.
+Set matches_sample to false when supporting evidence is absent.
+
+Require an identifiable visual concept. Reject gibberish,
+unrelated explanations, and non-image-generation requests.
+Provide specific, actionable feedback without rewriting the prompt.
+Set visual and clean according to the checks above.
+
+Conditions: {{ sample | tojson }}
+Source: {{ candidate | tojson }}

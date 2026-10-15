@@ -1,0 +1,6 @@
+topic:
+  type: categorical
+  choices:
+  - value: meeting invitation
+  - value: delivery update
+  - value: thank-you note

@@ -1,0 +1,36 @@
+Convert the source description into a concise English
+image-generation prompt.
+
+Preserve all original visual facts and constraints, including
+quantities, negations, subjects, attributes, actions,
+relationships, styles, and on-image text.
+
+A PIU is a distinct, independently identifiable visual fact.
+Add exactly target_added_pius new PIUs relative to the source.
+
+Each addition must introduce a visual distinction not already
+expressed or necessarily implied by the source.
+Translation and paraphrasing do not count as additions.
+
+Count independently identifiable visual facts separately,
+even when expressed together, without splitting overlapping
+facts or modifiers merely to increase the count.
+
+Additions must be relevant, novel, and non-redundant.
+Avoid generic quality terms, repetitive details, and filler.
+Use concise natural prose or keyword-style phrasing.
+
+When target_added_pius is 0, preserve the source without
+introducing new visual facts.
+Explicit source constraints always take priority.
+
+Return only prompt, without a PIU list, counts, or explanations.
+
+Source: {{ source | tojson }}
+target_added_pius: {{ sample.expansion.target }}
+
+{% if feedback is not none %}
+Revise the previous response to address the evaluation and rule feedback, while following the same sampled requirements.
+Previous response: {{ previous | tojson }}
+Feedback: {{ feedback | tojson }}
+{% endif %}

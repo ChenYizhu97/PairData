@@ -1,47 +1,36 @@
-# Five-dimensional sampling
+# Sampling
 
 [中文](sampler.md) | **English** · [Home](../README.en.md)
 
-Sampling determines the input conditions and planned distribution for Source Generation. Generate Source uses these conditions to simulate natural, varied user image requests; blind_sampler_validation checks only the retained conditions. Sampling covers different subjects, expressions, and languages, while generation and validation jointly assess whether the text is natural.
+Source and Target use separate `samplers/source.yaml` and `samplers/target.yaml` files. Reference them with `sampler: samplers/source.yaml` or `sampler: samplers/target.yaml` in recipe.yaml. Fields are sampled independently, once before the stage's first generation. Target sampling happens only after Source passes.
 
-## Dimensions and defaults
+Sampler files directly declare fields, for example:
 
-| Dimension | Controls | Options and weights |
-| --- | --- | --- |
-| `domain` | Subject domain | `people` 0.20, `animals` 0.15, `objects` 0.15, `scenes` 0.15, `plants_food` 0.10, `vehicles` 0.10, `art_design` 0.10, `cultural_abstract` 0.05 |
-| `focus` | Main visual aspect to describe | `subject` 0.20, `action` 0.20, `scene` 0.15, `relation` 0.15, `composition` 0.15, `aesthetic` 0.15 |
-| `specificity` | Amount and precision of explicit visual information | `minimal` 0.40, `moderate` 0.60 |
-| `expression` | Form of the user's description | `keywords` 0.35, `natural` 0.40, `colloquial` 0.25 |
-| `language` | Language of the user's description | `zh` 0.75, `en` 0.15, `mixed` 0.10 |
-
-Each dimension independently drops out with probability 0.1. If retained, its option is chosen using that dimension's weights. All dimensions may drop out, producing `{}`. The CLI uses this fixed dropout probability; it has no dropout override.
-
-`expression` controls keywords, natural sentences, or colloquial requests. Source prompts are primarily Chinese: the default language weights are 75% Chinese, 10% Chinese mixed with English visual keywords, and 15% English, conditional on retaining the language dimension. `language` independently controls these choices. `mixed` is a language option, not an expression option. A dropped language dimension imposes no language restriction. The validator still checks visual content and cleanliness.
-
-Dropped dimensions are not checked as conditions. `specificity` controls explicitly stated visual information, while expansion `level` controls new English visual information; they are independent. `minimal` centers on one main subject or scene with at most one or two additional visual details. `moderate` typically covers two to four aspects such as appearance, action, setting, or composition, leaving parts of the scene unspecified. These are semantic instructions for the model, rather than hard thresholds enforced through word or PIU counts. Both should remain concise and natural.
-
-## Task planning and reproducibility
-
-The default sampler is packaged as `src/midasdata/sampler.json` and loaded as a package resource. No sampler file in the working directory is required. Explanations are English model input data and are passed through unchanged.
-
-Sampling uses a separate `random.Random` initialized with the seed. Tasks are sampled in dimension order (`domain`, `focus`, `specificity`, `expression`, `language`) and written to `tasks.jsonl` before workers start, so response order, technical retries, and quality revisions cannot change the sampling sequence. Quality revisions preserve the task ID and sampled conditions.
-
-A fixed seed reproduces sampling, not model wording or the randomly assigned run ID. Original responses are retained in the audit log. `--count` is the planned task count; rejections do not trigger replacement sampling. The manifest reports planned and passed distributions for all five dimensions, using `(dropout)` for absent dimensions. Expansion records without sampling metadata also appear under `(dropout)` in those statistics.
-
-## Sampler configuration contract
-
-A custom file must contain exactly the five dimension keys, with a nonempty option list for each. Every row is `[option, explanation, weight]`. For example:
-
-```json
-{
-  "domain": [["animals", "Animals and creatures", 1.0]],
-  "focus": [["subject", "Focus on the subject", 1.0]],
-  "specificity": [["minimal", "One main visual idea", 1.0]],
-  "expression": [["natural", "Natural-language description", 1.0]],
-  "language": [["en", "User descriptions written entirely in English", 1.0]]
-}
+```yaml
+language:
+  type: categorical
+  dropout: 0.1
+  choices:
+    - value: zh
+      weight: 3.0
+    - value: en
+      weight: 1.0
+limit:
+  type: integer
+  min: 10
+  max: 30
 ```
 
-Startup validation requires supported, unique option strings, nonblank explanation strings, and finite nonnegative numeric weights. Boolean weights are rejected, and weights in each dimension must sum to 1 within an absolute tolerance of `1e-9`. Zero-weight options are allowed.
+Categorical selects a JSON value by weight, default weight 1. Weights must be finite and nonnegative with a positive sum; the sampler normalizes them. Choices must be distinct. Values may be strings, numbers, booleans, null, arrays or objects.
 
-Custom samplers may change weights or select a subset of the existing options; they cannot add dimensions or enum values. `null` is not a valid sampling option. Omission is produced only by dropout and is represented by leaving the dimension out of the sampled dictionary. Changing any sampler content, including explanations, requires a new run because the entire sampler participates in the recovery fingerprint.
+Integer samples uniformly from an inclusive integer interval. Each field supports dropout from 0 to 1, default 0. Dropped fields are absent from sample. A sampler file containing `{}` produces an empty object. Field names are simple identifiers starting with a letter or underscore. Files are validated at startup and included in snapshots and resume fingerprints.
+
+Seeds derive from the user seed, stable task index, stage and field name, independently of completion order or mapping order. Run IDs are random. A seed reproduces sampling, not model wording.
+
+Quality regeneration, technical retries and resume preserve the original sample. Rejected Sources do not produce Target samples.
+
+Manifest distributions record sampled_tasks, not_reached and sampled / stage_passed / exported field distributions per stage. Values are JSON-encoded counter keys; absent fields use `(dropout)`. Unreached stages are counted separately.
+
+Count is the planned task count. Rejections are not replaced, so filtering may change the final distribution. Statistics report this shift without quota filling or automatic reweighting.
+
+The example in `examples/prompt_pairs/` uses five Source dimensions with 0.1 dropout. Its Target expansion field samples a target/min/max object. The 0, 2–4 and 5–8 intervals have equal total weight, with uniform targets within each interval. These are recipe values, not built-in levels.

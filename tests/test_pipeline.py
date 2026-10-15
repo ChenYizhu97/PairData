@@ -1,257 +1,194 @@
 import asyncio
-import tempfile
+import json
 import unittest
-from pathlib import Path
+from collections import Counter
+from unittest.mock import AsyncMock, patch
 
-from midasdata.config import ExpansionRanges
-from midasdata.execution import ExecutionContext, ExecutionFailed
-from midasdata.sampler import load_sampler
-from midasdata.storage import RunStore
-from midasdata.validation import assess_group
-from midasdata.workflows.prompt_expansion import build_prompt_expansion
-from midasdata.workflows.source_generation import build_source_generation
-from tests.fakes import (
-    PROMPTS,
-    SOURCE,
-    FakeModel,
-    expansion_draft,
-    expansion_report,
-    local_settings,
-    model_input,
-    request_level,
-    source_report,
-)
+import yaml
+
+from pairdata.cli import create_parser
+from pairdata.runner import run_command
+from pairdata.storage import read_jsonl
+from tests.fakes import RecipeFixture, response, stage_of
 
 
-class PipelineTest(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
-        self.settings = local_settings(self.root)
-        self.run_number = 0
+class PipelineTest(RecipeFixture, unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        # Match the ordinary event loop used by the CLI.
+        asyncio.get_running_loop().set_debug(False)
 
-    def execution(self):
-        self.run_number += 1
-        store = RunStore(self.root / str(self.run_number))
-        store.open("generate", self.settings, {}, None, resume=False, run_id="test", tasks=[])
-        self.addCleanup(store.close)
-        return ExecutionContext(store, asyncio.Semaphore(4), 0, 0)
-
-    async def test_source_revision_budget_and_current_evidence(self):
-        invalid = source_report()
-        invalid["clean"] = False
-        for scenario in ("exhausted", "replacement_failed", "validator_failed"):
-            with self.subTest(scenario=scenario):
-                model = FakeModel()
-                model.responses[("blind_sampler_validation", None)] = [invalid] * 3
-                if scenario != "exhausted":
-                    model.responses[("generate", None)] = [
-                        {"concept": "first", "prompt": SOURCE},
-                        ExecutionFailed("offline")
-                        if scenario == "replacement_failed"
-                        else {"concept": "second", "prompt": "两只猫"},
-                    ]
-                    model.responses[("blind_sampler_validation", None)] = [
-                        invalid,
-                        ExecutionFailed("offline"),
-                    ]
-                result = (
-                    await build_source_generation(
-                        model, model, self.execution(), load_sampler()
-                    ).ainvoke(
-                        {
-                            "task_id": scenario,
-                            "conditions": {},
-                        }
-                    )
-                )["result"]
-                self.assertEqual(result.status, "rejected")
-                self.assertEqual(result.records, [])
-                if scenario == "exhausted":
-                    self.assertEqual(result.details.generation_attempt, 3)
-                    self.assertEqual(result.reason, "quality_budget_exhausted")
-                elif scenario == "replacement_failed":
-                    self.assertEqual(result.details.prompt, SOURCE)
-                    self.assertIsNotNone(result.details.validation)
-                else:
-                    self.assertEqual(result.details.prompt, "两只猫")
-                    self.assertIsNone(result.details.validation)
-                    self.assertIsNone(result.details.decision)
-
-    async def test_failed_levels_regenerate_with_fixed_targets(self):
-        for exhaust in (False, True):
-            with self.subTest(exhaust=exhaust):
-                model = FakeModel()
-                semantics = expansion_report("rich")
-                semantics.update(passed=False, reason="Restore the cat.")
-                too_few = expansion_report("rich")
-                too_few["added_pius"].pop()
-                model.responses[("blind_expand_validation", "rich")] = [semantics, too_few]
-                if exhaust:
-                    model.responses[("blind_expand_validation", "rich")].append(too_few)
-                execution = self.execution()
-                result = (
-                    await build_prompt_expansion(
-                        model, model, execution, ExpansionRanges()
-                    ).ainvoke({"task_id": "budget", "source_prompt": SOURCE})
-                )["result"]
-                self.assertEqual(
-                    {
-                        level: item.generation_attempt
-                        for level, item in result.details.levels.items()
-                    },
-                    {"light": 1, "medium": 1, "rich": 3},
-                )
-                self.assertEqual(result.status, "rejected" if exhaust else "passed")
-                if exhaust:
-                    self.assertEqual(result.reason, "quality_budget_exhausted")
-                    self.assertEqual(result.records, [])
-                    self.assertIsNone(result.details.group_decision)
-                else:
-                    self.assertEqual(
-                        [item.prompt for item in result.records], list(PROMPTS.values())
-                    )
-                    self.assertTrue(result.details.group_decision.passed)
-                generation_inputs = {}
-                for stage, payload in model.calls:
-                    if stage == "expand":
-                        self.assertEqual(set(payload), {"source", "target_added_pius"})
-                        level = request_level(stage, payload)
-                        interval = getattr(ExpansionRanges(), level)
-                        target = payload["target_added_pius"]
-                        self.assertIs(type(target), int)
-                        self.assertLessEqual(interval.min, target)
-                        self.assertLessEqual(target, interval.max)
-                        self.assertEqual(payload, generation_inputs.setdefault(level, payload))
-                    elif stage == "blind_expand_validation":
-                        self.assertEqual(set(payload), {"source", "output"})
-                    else:
-                        self.fail(f"unexpected model stage: {stage}")
-                self.assertFalse(
-                    any(
-                        event["stage"] == "group_check" and event["event"] == "request"
-                        for event in execution.store.events
-                    )
-                )
-
-    async def test_group_check_requires_all_three_passed_levels(self):
-        model = FakeModel()
-        execution = self.execution()
-        result = (
-            await build_prompt_expansion(model, model, execution, ExpansionRanges()).ainvoke(
-                {"task_id": "group", "source_prompt": SOURCE}
-            )
-        )["result"]
-        levels = result.details.levels
-        self.assertTrue(assess_group(levels).passed)
-        self.assertEqual(len(model.calls), 6)
-        self.assertTrue(
-            any(item.target_added_pius != item.decision.added_count for item in levels.values())
-        )
-        for stage, payload in model.calls:
-            if stage == "expand":
-                level = request_level(stage, payload)
-                self.assertEqual(levels[level].target_added_pius, payload["target_added_pius"])
-        for level in PROMPTS:
-            missing = {key: value for key, value in levels.items() if key != level}
-            self.assertFalse(assess_group(missing).passed)
-            failed = {
-                **levels,
-                level: levels[level].model_copy(update={"status": "quality_failed"}),
-            }
-            self.assertFalse(assess_group(failed).passed)
-            no_decision = {**levels, level: levels[level].model_copy(update={"decision": None})}
-            self.assertFalse(assess_group(no_decision).passed)
-        self.assertEqual(
-            sum(event["stage"] == "group_check" for event in execution.store.events), 1
-        )
-        configured = ExpansionRanges(medium={"min": 2, "max": 2}, rich={"min": 5, "max": 5})
-        configured_result = (
-            await build_prompt_expansion(model, model, self.execution(), configured).ainvoke(
-                {"task_id": "configured", "source_prompt": SOURCE}
-            )
-        )["result"]
-        self.assertEqual(configured_result.status, "passed")
-        self.assertEqual(
-            {
-                level: item.target_added_pius
-                for level, item in configured_result.details.levels.items()
-            },
-            {"light": 0, "medium": 2, "rich": 5},
+    def args(self, name="run", count=1):
+        return create_parser().parse_args(
+            [
+                "run",
+                "--recipe",
+                str(self.path),
+                "--count",
+                str(count),
+                "--out",
+                str(self.root / name),
+            ]
         )
 
-    async def test_failed_attempt_retains_only_current_draft_evidence(self):
-        for failure in ("generation", "validation"):
-            with self.subTest(failure=failure):
-                model = FakeModel()
-                invalid = expansion_report("medium")
-                invalid.update(passed=False, reason="Restore the source.")
-                model.responses[("blind_expand_validation", "medium")] = [invalid]
-                if failure == "generation":
-                    model.responses[("expand", "medium")] = [
-                        expansion_draft("medium"),
-                        ExecutionFailed("offline"),
-                    ]
-                else:
-                    model.responses[("blind_expand_validation", "medium")].append(
-                        ExecutionFailed("offline")
-                    )
-                result = (
-                    await build_prompt_expansion(
-                        model, model, self.execution(), ExpansionRanges()
-                    ).ainvoke({"task_id": failure, "source_prompt": SOURCE})
-                )["result"]
-                self.assertEqual(result.status, "rejected")
-                self.assertIsNone(result.details.group_decision)
-                attempt = result.details.levels["medium"]
-                self.assertIsNone(attempt.validation)
-                self.assertIsNone(attempt.decision)
-                self.assertEqual(attempt.status, "technical_failed")
-                self.assertEqual(
-                    attempt.prompt, "" if failure == "generation" else PROMPTS["medium"]
-                )
-                self.assertEqual(
-                    sum(
-                        stage == "blind_expand_validation"
-                        and request_level(stage, payload) == "medium"
-                        for stage, payload in model.calls
-                    ),
-                    1 if failure == "generation" else 2,
-                )
-
-    async def test_parallel_attempts_join_before_group_check(self):
+    async def test_target_regeneration_resume_and_export_rebuild(self):
+        args = self.args()
         started = asyncio.Event()
-        release = asyncio.Event()
+        counts = Counter()
+        target_messages = []
 
-        class BlockingModel(FakeModel):
-            async def invoke(self, inputs, schema):
-                stage, payload = model_input(inputs)
-                if stage == "expand" and request_level(stage, payload) == "medium":
+        async def transport(messages):
+            stage = stage_of(messages)
+            counts[stage] += 1
+            if stage == "target_generate":
+                target_messages.append(messages)
+                if counts[stage] == 2:
                     started.set()
-                    await release.wait()
-                return await super().invoke(inputs, schema)
+                    await asyncio.Future()
+            if stage == "target_evaluate" and counts[stage] == 1:
+                return response(
+                    stage,
+                    {"acceptable": False, "reason": "Fix the factual omission"},
+                )
+            return response(stage)
 
-        model = BlockingModel()
-        execution = self.execution()
-        task = asyncio.create_task(
-            build_prompt_expansion(model, model, execution, ExpansionRanges()).ainvoke(
-                {"task_id": "parallel", "source_prompt": SOURCE}
+        with patch("pairdata.model.ChatOpenAI") as factory:
+            client = factory.return_value
+            client.ainvoke = AsyncMock(side_effect=transport)
+            task = asyncio.create_task(run_command(args, self.recipe))
+            try:
+                await asyncio.wait_for(started.wait(), 5)
+            finally:
+                task.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await task
+            args.resume = True
+            client.ainvoke.reset_mock()
+            stats = await run_command(args, self.recipe)
+            self.assertEqual(client.ainvoke.await_count, 2)
+            self.assertEqual(counts["source_generate"], 1)
+            self.assertEqual(stats["passed"], 1)
+            self.assertEqual(stats["technical_retries"], 1)
+            self.assertEqual(stats["quality_retries"], 1)
+            self.assertEqual(len(target_messages), 3)
+            self.assertEqual(target_messages[1], target_messages[2])
+            self.assertNotIn("Fix the factual omission", json.dumps(target_messages[0]))
+            self.assertIn("Fix the factual omission", json.dumps(target_messages[1]))
+            events = list(read_jsonl(args.out / "audit.jsonl"))
+            self.assertEqual(sum(event["event"] == "sample" for event in events), 2)
+            target_inputs = [
+                event["data"]["input"]["inputs"]
+                for event in events
+                if event["event"] == "request" and event["stage"] == "target.generate"
+            ]
+            self.assertEqual(set(target_inputs[0]), {"source", "sample", "previous", "feedback"})
+            self.assertEqual(set(target_inputs[0]["sample"]), {"tone"})
+            self.assertIsNone(target_inputs[0]["previous"])
+            self.assertIsNone(target_inputs[0]["feedback"])
+            self.assertEqual(target_inputs[1], target_inputs[2])
+            self.assertEqual(target_inputs[1]["previous"], "The meeting starts at 10.")
+            self.assertFalse(target_inputs[1]["feedback"]["evaluation"]["acceptable"])
+            self.assertFalse(target_inputs[1]["feedback"]["decision"]["passed"])
+            for item in target_inputs[1:]:
+                self.assertEqual(item["source"], target_inputs[0]["source"])
+                self.assertEqual(item["sample"], target_inputs[0]["sample"])
+            expected = (args.out / "data.jsonl").read_bytes()
+            self.assertEqual(set(json.loads(expected)), {"source", "target"})
+            (args.out / "data.jsonl").write_text("damaged derived export")
+            client.ainvoke.reset_mock()
+            self.assertEqual(await run_command(args, self.recipe), stats)
+            client.ainvoke.assert_not_awaited()
+            self.assertEqual((args.out / "data.jsonl").read_bytes(), expected)
+            self.assertNotIn("test-secret", (args.out / "recipe.json").read_text())
+            self.assertNotIn("test-secret", (args.out / "manifest.json").read_text())
+            sampler_path = self.path.parent / self.recipe.settings.target.sampler
+            sampler = yaml.safe_load(sampler_path.read_text())
+            sampler["tone"]["choices"][0]["weight"] = 2
+            sampler_path.write_text(yaml.safe_dump(sampler))
+            with self.assertRaisesRegex(ValueError, "recipe mismatch"):
+                await run_command(args, self.load())
+
+    async def test_rejection_stays_in_the_failed_stage(self):
+        for failed in ("source", "target"):
+            with self.subTest(failed=failed), patch("pairdata.model.ChatOpenAI") as factory:
+
+                async def transport(messages):
+                    stage = stage_of(messages)
+                    return (
+                        response(stage, {"acceptable": False, "reason": "Failed quality"})
+                        if stage == f"{failed}_evaluate"
+                        else response(stage)
+                    )
+
+                factory.return_value.ainvoke = AsyncMock(side_effect=transport)
+                args = self.args(failed)
+                stats = await run_command(args, self.recipe)
+                self.assertEqual(stats["rejected"], 1)
+                self.assertEqual(list(read_jsonl(args.out / "data.jsonl")), [])
+                rejected = next(read_jsonl(args.out / "rejected.jsonl"))
+                self.assertEqual(rejected[failed]["generation_attempt"], 3)
+                self.assertEqual(stats["requests"], 6 if failed == "source" else 8)
+                self.assertEqual(
+                    stats["distributions"]["target"]["not_reached"], 1 if failed == "source" else 0
+                )
+                inputs = [
+                    event["data"]["input"]["inputs"]
+                    for event in read_jsonl(args.out / "audit.jsonl")
+                    if event["event"] == "request" and event["stage"] == f"{failed}.generate"
+                ]
+                self.assertIsNone(inputs[0]["feedback"])
+                for item in inputs[1:]:
+                    self.assertEqual(item["sample"], inputs[0]["sample"])
+                    self.assertEqual(item["previous"], rejected[failed]["candidate"])
+                    self.assertEqual(item["feedback"]["evaluation"]["reason"], "Failed quality")
+
+    async def test_configured_object_outputs_and_shared_concurrency(self):
+        config = yaml.safe_load(self.path.read_text())
+        for stage in ("source", "target"):
+            config[stage]["generate"]["output_path"] = "payload[0]"
+            schema_path = self.path.parent / f"schemas/{stage}_generate.json"
+            schema_path.write_text(
+                json.dumps(
+                    {
+                        "title": f"{stage}_generate",
+                        "type": "object",
+                        "properties": {
+                            "payload": {"type": "array", "minItems": 1, "items": {"type": "object"}}
+                        },
+                        "required": ["payload"],
+                        "additionalProperties": False,
+                    }
+                )
             )
-        )
-        try:
-            await asyncio.wait_for(started.wait(), 3)
-            for _ in range(30):
-                if sum(stage == "blind_expand_validation" for stage, _ in model.calls) == 2:
-                    break
+            (self.path.parent / f"rules/{stage}.yaml").write_text(
+                "field: evaluation.acceptable\nop: eq\nvalue: true\n"
+            )
+        self.path.write_text(yaml.safe_dump(config))
+        recipe = self.load()
+        recipe.settings.runtime.concurrency = 2
+        recipe.settings.runtime.preview_page_size = 1
+        active = maximum = 0
+
+        async def transport(messages):
+            nonlocal active, maximum
+            active += 1
+            maximum = max(maximum, active)
+            try:
                 await asyncio.sleep(0.01)
-            self.assertEqual(sum(stage == "blind_expand_validation" for stage, _ in model.calls), 2)
-            self.assertFalse(
-                any(event["stage"] == "group_check" for event in execution.store.events)
-            )
-            self.assertFalse(task.done())
-            release.set()
-            self.assertEqual((await asyncio.wait_for(task, 3))["result"].status, "passed")
-        finally:
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+                stage = stage_of(messages)
+                return (
+                    response(stage, {"payload": [{"time": "10:00"}]})
+                    if stage.endswith("generate")
+                    else response(stage)
+                )
+            finally:
+                active -= 1
+
+        with patch("pairdata.model.ChatOpenAI") as factory:
+            factory.return_value.ainvoke = AsyncMock(side_effect=transport)
+            args = self.args(count=3)
+            stats = await run_command(args, recipe)
+        self.assertEqual(stats["passed"], 3)
+        self.assertEqual(maximum, 2)
+        rows = list(read_jsonl(args.out / "data.jsonl"))
+        self.assertEqual(rows, [{"source": {"time": "10:00"}, "target": {"time": "10:00"}}] * 3)
+        self.assertTrue((args.out / "preview/page-0003.html").exists())

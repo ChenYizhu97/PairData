@@ -1,0 +1,8 @@
+Rewrite this message in a {{ sample.tone }} tone. Preserve all factual content. Return the rewrite in text.
+Source: {{ source | tojson }}
+
+{% if feedback is not none %}
+Revise the previous response to address the evaluation and rule feedback, while following the same sampled requirements.
+Previous response: {{ previous | tojson }}
+Feedback: {{ feedback | tojson }}
+{% endif %}

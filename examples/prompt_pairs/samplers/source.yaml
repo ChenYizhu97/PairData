@@ -1,0 +1,113 @@
+domain:
+  type: categorical
+  dropout: 0.1
+  choices:
+  - value:
+      value: people
+      meaning: People and fictional characters
+    weight: 0.2
+  - value:
+      value: animals
+      meaning: Animals and fictional creatures
+    weight: 0.15
+  - value:
+      value: objects
+      meaning: Everyday objects, tools, and consumer products
+    weight: 0.15
+  - value:
+      value: scenes
+      meaning: Natural, architectural, indoor, and outdoor environments
+    weight: 0.15
+  - value:
+      value: plants_food
+      meaning: Plants, flowers, and food
+    weight: 0.1
+  - value:
+      value: vehicles
+      meaning: Vehicles, machines, and fictional technology
+    weight: 0.1
+  - value:
+      value: art_design
+      meaning: Illustrations, icons, posters, and other designed visual assets
+    weight: 0.1
+  - value:
+      value: cultural_abstract
+      meaning: Cultural symbols, visual motifs, and abstract concepts
+    weight: 0.05
+focus:
+  type: categorical
+  dropout: 0.1
+  choices:
+  - value:
+      value: subject
+      meaning: The identity or appearance of the main subject
+    weight: 0.2
+  - value:
+      value: action
+      meaning: An action, activity, or event
+    weight: 0.2
+  - value:
+      value: scene
+      meaning: The surrounding setting or environment
+    weight: 0.15
+  - value:
+      value: relation
+      meaning: Spatial or interactive relationships between multiple entities
+    weight: 0.15
+  - value:
+      value: composition
+      meaning: Visual composition, framing, or viewpoint
+    weight: 0.15
+  - value:
+      value: aesthetic
+      meaning: Visual style, mood, or atmosphere
+    weight: 0.15
+specificity:
+  type: categorical
+  dropout: 0.1
+  choices:
+  - value:
+      value: minimal
+      meaning: A brief visual request focused on one main subject or scene, with at
+        most one or two additional visual details
+    weight: 0.4
+  - value:
+      value: moderate
+      meaning: A concise visual request with a few distinct visual details, typically
+        covering two to four aspects such as appearance, action, setting, or composition,
+        without fully specifying the scene
+    weight: 0.6
+expression:
+  type: categorical
+  dropout: 0.1
+  choices:
+  - value:
+      value: keywords
+      meaning: A list of keywords or short phrases
+    weight: 0.35
+  - value:
+      value: natural
+      meaning: Neutral, naturally phrased descriptive sentences
+    weight: 0.4
+  - value:
+      value: colloquial
+      meaning: Casual, informal, or request-style language (e.g., 'Can you draw a...',
+        'I want to see a...')
+    weight: 0.25
+language:
+  type: categorical
+  dropout: 0.1
+  choices:
+  - value:
+      value: zh
+      meaning: User descriptions written primarily in Chinese
+    weight: 0.75
+  - value:
+      value: en
+      meaning: User descriptions written entirely in English
+    weight: 0.15
+  - value:
+      value: mixed
+      meaning: Predominantly Chinese descriptions containing occasional English words,
+        phrases, or visual terms
+    weight: 0.1

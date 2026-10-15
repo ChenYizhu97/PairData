@@ -1,7 +1,6 @@
-# Local environment and configuration; keep config.example.toml in version control
+# Local environment
 .env
 .venv/
-config.toml
 
 # Python bytecode, tool caches, and test reports
 __pycache__/
@@ -23,13 +22,11 @@ runs/
 
 # Run artifacts in custom --out directories; keep other JSON/JSONL files eligible for version control
 data.jsonl
-sft.jsonl
 tasks.jsonl
 audit.jsonl
 rejected.jsonl
 lineage.jsonl
 manifest.json
-sources.json
 run.lock
 results/
 preview.html

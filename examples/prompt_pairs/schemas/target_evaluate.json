@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "target_evaluate",
+  "type": "object",
+  "properties": {
+    "preserved": {
+      "type": "boolean"
+    },
+    "valid_prompt": {
+      "type": "boolean"
+    },
+    "original_pius": {
+      "type": "array",
+      "items": {
+        "title": "OriginalPIU",
+        "type": "object",
+        "properties": {
+          "fact": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_evidence": {
+            "type": "string",
+            "minLength": 1
+          },
+          "preserved": {
+            "type": "boolean"
+          },
+          "output_evidence": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "fact",
+          "source_evidence",
+          "preserved",
+          "output_evidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "added_pius": {
+      "type": "array",
+      "items": {
+        "title": "AddedPIU",
+        "type": "object",
+        "properties": {
+          "fact": {
+            "type": "string",
+            "minLength": 1
+          },
+          "output_evidence": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "fact",
+          "output_evidence"
+        ],
+        "additionalProperties": false
+      },
+      "uniqueItems": true
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "preserved",
+    "valid_prompt",
+    "original_pius",
+    "added_pius",
+    "issues",
+    "reason"
+  ],
+  "additionalProperties": false
+}

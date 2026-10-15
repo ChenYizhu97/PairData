@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "target_evaluate",
+  "type": "object",
+  "properties": {
+    "acceptable": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "acceptable",
+    "reason"
+  ],
+  "additionalProperties": false
+}

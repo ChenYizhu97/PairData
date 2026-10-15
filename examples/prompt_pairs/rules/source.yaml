@@ -1,0 +1,18 @@
+all:
+- field: evaluation.matches_sample
+  op: eq
+  value: true
+- field: evaluation.visual
+  op: eq
+  value: true
+- field: evaluation.clean
+  op: eq
+  value: true
+- field: candidate
+  op: contains
+  value:
+    ref: evaluation.evidence
+- not:
+    field: candidate
+    op: contains
+    value: '```'

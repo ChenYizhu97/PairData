@@ -1,0 +1,54 @@
+name: rewrite
+models:
+  generator:
+    temperature: 0.8
+  evaluator:
+    temperature: 0.0
+source:
+  sampler: samplers/source.yaml
+  generate:
+    model: generator
+    inputs:
+      sample: {ref: sample}
+      previous: {ref: previous}
+      feedback: {ref: feedback}
+    messages:
+      - role: user
+        template: prompts/source_generate.j2
+    response_schema: schemas/source_generate.json
+    output_path: text
+  evaluate:
+    model: evaluator
+    inputs:
+      sample: {ref: sample}
+      candidate: {ref: candidate}
+    messages:
+      - role: user
+        template: prompts/source_evaluate.j2
+    response_schema: schemas/source_evaluate.json
+  decision: rules/source.yaml
+target:
+  sampler: samplers/target.yaml
+  generate:
+    model: generator
+    inputs:
+      source: {ref: source}
+      sample: {ref: sample}
+      previous: {ref: previous}
+      feedback: {ref: feedback}
+    messages:
+      - role: user
+        template: prompts/target_generate.j2
+    response_schema: schemas/target_generate.json
+    output_path: text
+  evaluate:
+    model: evaluator
+    inputs:
+      source: {ref: source}
+      target: {ref: candidate}
+      sample: {ref: sample}
+    messages:
+      - role: user
+        template: prompts/target_evaluate.j2
+    response_schema: schemas/target_evaluate.json
+  decision: rules/target.yaml
