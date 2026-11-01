@@ -8,13 +8,20 @@ import os
 from collections import defaultdict
 from collections.abc import Generator, Iterable, Iterator
 from contextlib import contextmanager
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TextIO
 
 from pydantic import BaseModel
 
-from pairdata.schemas import OperationEvent, QualityDecision, TaskResult
+from pairdata.schemas import (
+    OperationEvent,
+    OperationMetadata,
+    QualityDecision,
+    StageName,
+    TaskResult,
+)
 
 
 def encode_json(value) -> str:
@@ -93,10 +100,32 @@ class RunStore:
 
     def __init__(self, directory: Path):
         self.directory = directory
-        self.manifest: dict = {}
-        self.events: list[dict] = []
-        self.operation_events: dict[str, list[dict]] = defaultdict(list)
+        self._manifest: dict = {}
+        self._events: list[OperationEvent] = []
+        self._operation_events: dict[str, list[OperationEvent]] = defaultdict(list)
         self._lock: TextIO | None = None
+
+    @property
+    def seed(self) -> int:
+        return self._manifest["request"]["seed"]
+
+    @property
+    def planned_tasks(self) -> int:
+        return self._manifest["planned"]
+
+    @property
+    def recipe_name(self) -> str:
+        return self._manifest["config"]["name"]
+
+    def sampler_fields(self, stage: StageName) -> tuple[str, ...]:
+        return tuple(self._manifest["config"][stage]["sampler"])
+
+    def iter_events(self) -> Iterator[OperationEvent]:
+        """Read audit events in append order; callers must not mutate them."""
+        return iter(self._events)
+
+    def operation_history(self, logical_call_id: str) -> tuple[OperationEvent, ...]:
+        return tuple(self._operation_events.get(logical_call_id, ()))
 
     def open(
         self,
@@ -121,18 +150,22 @@ class RunStore:
         except BlockingIOError as error:
             self.close()
             raise ValueError("run directory is already in use") from error
-        self.events = []
-        self.operation_events = defaultdict(list)
-        if resume:
-            self._resume(expected)
-        else:
-            self._initialize(snapshot, request, expected, run_id, tasks)
+        self._events = []
+        self._operation_events = defaultdict(list)
+        try:
+            if resume:
+                self._resume(expected)
+            else:
+                self._initialize(snapshot, request, expected, run_id, tasks)
+        except BaseException:
+            self.close()
+            raise
 
     def _initialize(self, snapshot, request, fingerprint, run_id, tasks):
         (self.directory / "results").mkdir()
         write_jsonl(self.directory / "tasks.jsonl", tasks)
         write_json(self.directory / "recipe.json", snapshot)
-        self.manifest = {
+        self._manifest = {
             "run_id": run_id,
             "status": "running",
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -143,19 +176,19 @@ class RunStore:
             "recipe_digest": file_digest(self.directory / "recipe.json"),
             "planned": sum(1 for _ in self.tasks()),
         }
-        write_json(self.directory / "manifest.json", self.manifest)
+        write_json(self.directory / "manifest.json", self._manifest)
 
     def _resume(self, fingerprint: str):
-        self.manifest = json.loads((self.directory / "manifest.json").read_text(encoding="utf-8"))
-        if self.manifest["fingerprint"] != fingerprint:
+        self._manifest = json.loads((self.directory / "manifest.json").read_text(encoding="utf-8"))
+        if self._manifest["fingerprint"] != fingerprint:
             raise ValueError("resume input/recipe mismatch")
         for filename, key in (("tasks.jsonl", "tasks_digest"), ("recipe.json", "recipe_digest")):
-            if file_digest(self.directory / filename) != self.manifest.get(key):
+            if file_digest(self.directory / filename) != self._manifest.get(key):
                 raise ValueError(f"saved {filename} is corrupted")
         saved = json.loads((self.directory / "recipe.json").read_text(encoding="utf-8"))
         if (
-            run_fingerprint(saved, self.manifest["request"]) != fingerprint
-            or self.manifest["config"] != saved["config"]
+            run_fingerprint(saved, self._manifest["request"]) != fingerprint
+            or self._manifest["config"] != saved["config"]
         ):
             raise ValueError("saved run metadata is inconsistent with its recipe fingerprint")
         self._read_audit()
@@ -178,15 +211,15 @@ class RunStore:
                     os.fsync(handle.fileno())
                     break
                 try:
-                    event = OperationEvent.model_validate_json(line).model_dump()
-                    if event["run_id"] != self.manifest["run_id"]:
+                    event = OperationEvent.model_validate_json(line)
+                    if event.run_id != self._manifest["run_id"]:
                         raise ValueError("audit event belongs to another run")
                 except ValueError as error:
                     raise ValueError(
                         "audit log is corrupted; refusing to reset request budgets"
                     ) from error
-                self.events.append(event)
-                self.operation_events[event["logical_call_id"]].append(event)
+                self._events.append(event)
+                self._operation_events[event.logical_call_id].append(event)
 
     def tasks(self) -> Iterator[dict]:
         return read_jsonl(self.directory / "tasks.jsonl")
@@ -209,38 +242,44 @@ class RunStore:
 
     def append_event(self, **fields) -> None:
         event = OperationEvent(
-            run_id=self.manifest["run_id"],
+            run_id=self._manifest["run_id"],
             timestamp=datetime.now(timezone.utc).isoformat(),
             **fields,
-        ).model_dump()
+        )
         with (self.directory / "audit.jsonl").open("a", encoding="utf-8") as handle:
-            handle.write(encode_json(event) + "\n")
+            handle.write(encode_json(event.model_dump(by_alias=True)) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
-        self.events.append(event)
-        self.operation_events[event["logical_call_id"]].append(event)
+        self._events.append(event)
+        self._operation_events[event.logical_call_id].append(event)
 
-    def record_sample(self, metadata: dict, sample: dict) -> dict:
-        for event in self.operation_events[metadata["logical_call_id"]]:
-            if event["event"] == "sample":
-                saved = event["data"]["sample"]
+    def record_sample(self, metadata: OperationMetadata, sample: dict) -> dict:
+        for event in self._operation_events[metadata.logical_call_id]:
+            if event.event == "sample":
+                saved = event.data["sample"]
                 if content_digest(saved) != content_digest(sample):
                     raise ValueError("replayed sample differs from saved sample")
                 return copy.deepcopy(saved)
-        self.append_event(**metadata, event="sample", data={"sample": sample})
+        self.append_event(**asdict(metadata), event="sample", data={"sample": sample})
         return copy.deepcopy(sample)
 
-    def record_decision(self, metadata: dict, decision: QualityDecision) -> None:
+    def record_decision(self, metadata: OperationMetadata, decision: QualityDecision) -> None:
         """Save a quality decision without appending duplicate replay events."""
-        history = self.operation_events[metadata["logical_call_id"]]
-        if not any(event["event"] == "quality_decision" for event in history):
-            self.append_event(**metadata, event="quality_decision", data=decision.model_dump())
+        history = self._operation_events[metadata.logical_call_id]
+        if not any(event.event == "quality_decision" for event in history):
+            self.append_event(
+                **asdict(metadata), event="quality_decision", data=decision.model_dump()
+            )
 
-    def set_status(self, status: str, *, error: str | None = None) -> None:
-        self.manifest["status"] = status
+    def set_status(
+        self, status: str, *, error: str | None = None, statistics: dict | None = None
+    ) -> None:
+        if statistics is not None:
+            self._manifest["statistics"] = statistics
+        self._manifest["status"] = status
         if error is not None:
-            self.manifest["error"] = error
-        write_json(self.directory / "manifest.json", self.manifest)
+            self._manifest["error"] = error
+        write_json(self.directory / "manifest.json", self._manifest)
 
     def close(self) -> None:
         if self._lock is not None:

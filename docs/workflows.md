@@ -1,6 +1,6 @@
 # 工作流
 
-**中文** | [English](workflows.en.md) · [首页](../README.md)
+**中文** | [English](workflows.en.md) · [首页](../README.zh-CN.md)
 
 固定图定义在 [pipeline.py](../src/pairdata/workflows/pipeline.py)，状态、节点、路由和 build 位于同一模块。Recipe 控制行为，图拓扑由代码固定。
 
@@ -49,3 +49,7 @@ Source 和 Target 均可在 recipe 中绑定 previous 与 feedback 进行修订�
 采样事件按任务与阶段唯一保存，恢复会检查重新计算结果与历史一致。已提交的通过和拒绝任务都跳过；导出按任务顺序重建。规则决策重放不重复追加。
 
 目录锁阻止并发写入同一运行。tasks.jsonl 和 recipe.json 检查摘要；完整非法的审计行阻止恢复，仅丢弃没有换行的最后一次未完成追加。
+
+worker 数量也等于 concurrency。退避会释放请求信号量，但任务仍占用 worker；所有 worker 被占用时，排队任务继续等待。
+
+响应解析和 Schema 错误使用 `ResponseValidationError`。普通本地 `ValueError` 和存储错误不当作模型输出错误重试。执行失败后，导出或预览中的次要错误附加到原始异常，不覆盖原始异常。

@@ -1,6 +1,6 @@
 # Sampling
 
-[中文](sampler.md) | **English** · [Home](../README.en.md)
+[中文](sampler.md) | **English** · [Home](../README.md)
 
 Source and Target use separate `samplers/source.yaml` and `samplers/target.yaml` files. Reference them with `sampler: samplers/source.yaml` or `sampler: samplers/target.yaml` in recipe.yaml. Fields are sampled independently, once before the stage's first generation. Target sampling happens only after Source passes.
 

@@ -1,6 +1,6 @@
 # Evaluation and decisions
 
-[中文](validation.md) | **English** · [Home](../README.en.md)
+[中文](validation.md) | **English** · [Home](../README.md)
 
 Models generate content or evaluation reports. Code validates response structure and evaluates acceptance rules. Evaluation schemas need not include a fixed passed field.
 

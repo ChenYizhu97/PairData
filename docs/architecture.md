@@ -47,3 +47,17 @@ recipe 目录自包含，所有资源路径相对 recipe.yaml。启动时校验�
 - [评估与决策](validation.md)：Schema 和规则操作符。
 - [工作流](workflows.md)：节点、预算、并发与重放。
 - [数据契约](data.md)：导出、运行产物和审计记录。
+
+## 维护者阅读入口
+
+建议按 `cli → recipe → runner → workflows/pipeline` 阅读主流程，再按需要进入 `execution → storage` 理解恢复。
+
+内部术语统一如下：`task_id` 标识计划任务；`stage` 仅指 source/target；`operation` 标识 source.generate 等完整操作；`generation_attempt` 是质量重生成次数，`request_attempt` 是该逻辑请求的技术尝试次数。两种次数均包含首次。
+
+`ModelClient` 描述工作流使用的模型接口，测试直接注入替身；`LLMModel` 负责服务适配。`CompiledCall` 保留具体配置类型，使生成调用的 output_path 在类型层面可见。`RunStore` 提供操作历史、事件遍历、采样字段和状态更新接口，其他模块不直接访问其 manifest 或事件索引。采样种子通过 ExecutionContext 显式传入。
+
+图负责阶段路由；审计日志负责请求恢复，两者各自只有一个实现。并发 worker 限制活跃任务数，信号量限制在途请求数；退避释放请求槽位，但任务仍占据 worker。
+
+响应格式或 Schema 错误使用 ResponseValidationError，执行器可以重试；服务适配器只判断传输错误是否可重试。本地编程错误和存储错误直接传播。执行失败后的导出或预览失败作为附加异常说明保留，不覆盖原始执行错误。
+
+审计文件沿用 sample_id、stage、technical_attempt 字段名，存储层通过别名映射到内部术语，逻辑请求 ID 与恢复指纹算法保持不变。

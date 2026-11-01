@@ -1,6 +1,6 @@
 # 数据契约与审计
 
-**中文** | [English](data.en.md) · [首页](../README.md)
+**中文** | [English](data.en.md) · [首页](../README.zh-CN.md)
 
 业务导出 `data.jsonl` 每行严格包含 source 和 target：
 
@@ -40,3 +40,5 @@ OperationEvent 包含 run_id、sample_id、stage、logical_call_id、generation_
 追加审计后 flush/fsync；文件替换使用临时文件、fsync、原子替换和目录 fsync。原子性以单个文件为单位，恢复会重建派生导出。
 
 API 密钥通过环境变量读取，不进入配置快照或指纹。规则与模型输出仍可能包含用户提供的业务内容，Audit 保存这些内容用于追踪。
+
+内部审计对象使用 `task_id`、`operation` 和 `request_attempt`；落盘通过序列化别名继续使用 `sample_id`、`stage` 和 `technical_attempt`，已有审计日志仍可读取。

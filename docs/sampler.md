@@ -1,6 +1,6 @@
 # 采样
 
-**中文** | [English](sampler.en.md) · [首页](../README.md)
+**中文** | [English](sampler.en.md) · [首页](../README.zh-CN.md)
 
 Source 和 Target 分别使用 `samplers/source.yaml` 和 `samplers/target.yaml`。在 recipe.yaml 的阶段配置中使用 `sampler: samplers/source.yaml` 或 `sampler: samplers/target.yaml` 引用文件。字段独立采样，每个阶段首次生成前采样一次并记录；Target 在 Source 通过后采样。
 

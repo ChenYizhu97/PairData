@@ -1,43 +1,33 @@
 # PairData
 
-**中文** | [English](README.en.md)
+**English** | [中文](README.zh-CN.md)
 
-轻量、可配置的 Source–Target 数据合成管道，基于 LangGraph，支持分布采样、LLM 辅助评估和程序质量控制。
+A configurable, LangGraph-based pipeline for synthesizing source–target datasets with distribution-aware sampling, LLM-assisted evaluation, and programmatic quality control.
 
-每个通过任务只导出一条记录：
+Each accepted task exports exactly one pair:
 
 ```json
-{"source": "一只猫趴在窗边", "target": "A cat lying beside a window."}
+{"source": "A cat beside a window", "target": "A cat resting beside a sunlit window."}
 ```
 
-默认样例放在 `recipes/rewrite/`：YAML 定义模型和输入绑定，Source / Target 各自使用独立的 sampler YAML，Jinja2 定义消息，JSON Schema 定义生成与评估响应，YAML 规则决定是否通过。复杂业务示例放在 `examples/`。切换任务无需修改工作流。
+The default recipe lives in `recipes/rewrite/`; complex examples live in `examples/`. YAML defines models and input bindings, with separate Source and Target sampler files. Jinja2 renders messages; JSON Schema validates responses; declarative rules decide acceptance.
 
-```mermaid
-flowchart LR
-    SS[Source Sampler] --> S[Source]
-    S --> SE[Evaluate]
-    SE --> SG{Gate}
-    SG -->|通过| TS[Target Sampler]
-    TS --> T[Target]
-    T --> TE[Evaluate]
-    TE --> TG{Gate}
-    TG -->|通过| E[Export]
-    SG -->|重新生成| S
-    TG -->|重新生成| T
+```text
+Source Sampler → Source → Evaluate → Gate → Target Sampler → Target → Evaluate → Gate → Export
 ```
 
-Source 和 Target 均可通过 `previous` / `feedback` 绑定上一轮候选与评估、规则反馈。质量失败后在原 sample 下重新生成，Target 同时保留已通过的 Source。两个样例均启用反馈。每阶段只采样一次，技术重试和断点恢复保留已用预算。预算耗尽的任务被拒绝，不补齐任务数。
+A failed gate retries its own generation stage within budget. Both Source and Target can bind `previous` and `feedback` to the prior candidate, evaluation and rule decision. Both examples enable this. Sampling happens once per stage, and Target retries preserve the accepted Source. Rejected tasks are not replaced.
 
-## 快速开始
+## Quick start
 
-需要 Python 3.11+、uv 和支持文件锁、目录 fsync 的 POSIX 环境。
+Requires Python 3.11+, uv, and a POSIX environment with file locking and directory fsync.
 
 ```bash
 uv sync --locked
 uv run pairdata check
 ```
 
-在 `.env` 中配置 OpenAI 兼容服务：
+Configure an OpenAI-compatible service in `.env`:
 
 ```dotenv
 MODEL_NAME=your-model
@@ -49,38 +39,38 @@ OPENAI_API_KEY=your-secret
 uv run pairdata run --count 20 --seed 42 --out runs/rewrite
 ```
 
-输出包括 `data.jsonl`、`audit.jsonl`、`manifest.json`、`recipe.json` 和可离线打开的 `preview.html`。中断后使用原命令加 `--resume`。
+The run produces `data.jsonl`, `audit.jsonl`, `manifest.json`, `recipe.json` and an offline `preview.html`. Repeat the command with `--resume` after interruption.
 
-## 默认样例与业务示例
+## Default recipe and examples
 
-在项目根目录运行时，省略 `--recipe` 默认使用 `recipes/rewrite/recipe.yaml`。复制整个 recipe 目录即可开始配置自己的任务。
+From the project root, omitting `--recipe` selects `recipes/rewrite/recipe.yaml`. Copy a complete recipe directory to configure your own task.
 
-| Recipe | 任务 |
+| Recipe | Task |
 | --- | --- |
-| [rewrite](recipes/rewrite/recipe.yaml)（默认） | 生成简短消息，再按采样语气改写 |
-| [prompt_pairs](examples/prompt_pairs/recipe.yaml)（复杂示例） | 按五维条件生成图像描述，再按采样的新增 PIU 目标生成英文提示词 |
+| [rewrite](recipes/rewrite/recipe.yaml), default | Generate a short message, then rewrite it in a sampled tone |
+| [prompt_pairs](examples/prompt_pairs/recipe.yaml), complex example | Generate a visual description and an English prompt with sampled additions |
 
 ```bash
 uv run pairdata check --recipe examples/prompt_pairs/recipe.yaml
 uv run pairdata run --recipe examples/prompt_pairs/recipe.yaml --count 20 --out runs/prompt-pairs
 ```
 
-`prompt_pairs` 每任务采样一个扩写目标，导出一对数据；Target 评估只看到 Source 和 Target，程序检查新增 PIU 列表长度。PIU 的识别、语义一致性和列表中逐项证据的正确性依赖评估模型。
+`prompt_pairs` samples one expansion target per task and exports one pair. Its Target evaluator sees only Source and Target; code checks the identified PIU list length. Semantic judgments and individual PIU evidence remain model assessments.
 
-## 文档
+## Documentation
 
-- [配置与运行](docs/running.md)：Recipe 契约、消息输入、CLI 与恢复。
-- [采样](docs/sampler.md)：加权选项、整数区间、dropout 与分布统计。
-- [评估与决策](docs/validation.md)：JSON Schema 与规则操作符。
-- [工作流](docs/workflows.md)：节点、预算、并发与执行边界。
-- [数据契约](docs/data.md)：业务导出、内部结果和审计追踪。
-- [设计文档](docs/architecture.md)：架构和配置边界。
+- [Configuration and running](docs/running.en.md)
+- [Sampling](docs/sampler.en.md)
+- [Evaluation and decisions](docs/validation.en.md)
+- [Workflow](docs/workflows.en.md)
+- [Data contracts](docs/data.en.md)
+- [Architecture design, Chinese](docs/architecture.md)
 
-## 检查
+## Checks
 
 ```bash
 uv run --locked python -m unittest discover -s tests -v
 uv run --locked ruff check .
 ```
 
-测试使用临时目录和模型传输替身，不调用远程服务。
+Tests use temporary directories and mocked model transports, without remote calls.

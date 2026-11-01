@@ -1,11 +1,25 @@
 """Send configured messages and retain responses; local Schema validation is separate."""
 
 import asyncio
+from typing import Protocol
 
 import openai
 from langchain_openai import ChatOpenAI
 
 from pairdata.config import ConfigurationError, ModelSettings
+from pairdata.schemas import ModelResponse
+
+
+class ModelClient(Protocol):
+    """The model boundary used by the workflow and offline test doubles."""
+
+    name: str
+
+    async def invoke(self, messages: list[dict], schema: dict) -> ModelResponse: ...
+
+    def is_retryable(self, error: Exception) -> bool: ...
+
+    def error_text(self, error: Exception) -> str: ...
 
 
 class LLMModel:
@@ -37,9 +51,9 @@ class LLMModel:
     def is_retryable(error: Exception) -> bool:
         if isinstance(error, openai.APIStatusError):
             return error.status_code in {408, 409, 429} or error.status_code >= 500
-        return isinstance(error, (TimeoutError, openai.APIConnectionError, ValueError))
+        return isinstance(error, (TimeoutError, openai.APIConnectionError))
 
-    async def invoke(self, inputs: list[dict], schema: dict) -> dict:
+    async def invoke(self, messages: list[dict], schema: dict) -> ModelResponse:
         """Make one request and return a persistable response for Schema validation."""
         model = self.client
         native = self.structured_output == "native"
@@ -51,7 +65,7 @@ class LLMModel:
                 strict=False,
             )
         try:
-            response = await asyncio.wait_for(model.ainvoke(inputs), timeout=self.timeout)
+            response = await asyncio.wait_for(model.ainvoke(messages), timeout=self.timeout)
         except openai.APIStatusError as error:
             if not self.is_retryable(error):
                 raise ConfigurationError(self.error_text(error)) from None

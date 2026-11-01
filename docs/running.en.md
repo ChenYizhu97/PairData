@@ -1,6 +1,6 @@
 # Configuration and running
 
-[中文](running.md) | **English** · [Home](../README.en.md)
+[中文](running.md) | **English** · [Home](../README.md)
 
 From the project root, commands default to `recipes/rewrite/recipe.yaml`. Select the complex example in `examples/prompt_pairs/` with `--recipe`. Copy an entire recipe directory to define a new task. `check` validates configuration, samplers, template variables, schemas and rules without calling models. It does not check service credentials or resolve every runtime data path.
 

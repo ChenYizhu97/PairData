@@ -1,6 +1,6 @@
 # 评估与决策
 
-**中文** | [English](validation.en.md) · [首页](../README.md)
+**中文** | [English](validation.en.md) · [首页](../README.zh-CN.md)
 
 LLM 给出生成内容或评估信息，程序验证响应结构并执行决策规则。评估响应不要求固定 passed 字段。
 

@@ -1,10 +1,29 @@
 """Fixed runtime contracts. Recipe JSON Schemas describe model responses."""
 
-from typing import Annotated, Literal
+from dataclasses import dataclass
+from typing import Annotated, Literal, NotRequired, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, StringConstraints, model_validator
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+StageName = Literal["source", "target"]
+OperationName = Literal["sample", "generate", "evaluate", "gate"]
+CallName = Literal["generate", "evaluate"]
+
+
+class ModelResponse(TypedDict):
+    raw: str | list
+    parsed: NotRequired[JsonValue]
+    usage: NotRequired[dict]
+
+
+@dataclass(frozen=True)
+class OperationMetadata:
+    task_id: str
+    operation: str
+    logical_call_id: str
+    generation_attempt: int = 0
+    model: str = ""
 
 
 class Contract(BaseModel):
@@ -50,15 +69,17 @@ class TaskResult(Contract):
 
 
 class OperationEvent(Contract):
+    # Keep the existing audit format readable across this internal naming change.
+    model_config = ConfigDict(populate_by_name=True)
     run_id: str
-    sample_id: str
+    task_id: str = Field(alias="sample_id")
     event: Literal[
         "sample", "request", "response", "success", "quality_decision", "technical_failure", "fatal"
     ]
     timestamp: str
-    stage: str
+    operation: str = Field(alias="stage")
     logical_call_id: str
-    technical_attempt: int = 0
+    request_attempt: int = Field(default=0, alias="technical_attempt")
     generation_attempt: int = 0
     model: str = ""
     data: dict = Field(default_factory=dict)

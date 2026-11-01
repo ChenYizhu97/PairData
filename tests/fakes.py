@@ -5,9 +5,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
-
-from langchain_core.messages import AIMessage
+from unittest.mock import AsyncMock, patch
 
 from pairdata.recipe import load_recipe
 
@@ -34,8 +32,18 @@ class RecipeFixture:
         return load_recipe(self.path, {"retry_initial": 0.0, "retry_max": 0.0}, self.env_file)
 
 
-def stage_of(messages):
-    return json.loads(messages[0]["content"].rsplit("without Markdown:\n", 1)[1])["title"]
+class FakeModel:
+    """Implements the model boundary without parsing rendered prompt text."""
+
+    name = "fake"
+    is_retryable = staticmethod(lambda error: isinstance(error, TimeoutError))
+    error_text = staticmethod(str)
+
+    def __init__(self, transport):
+        self.invoke = AsyncMock(side_effect=transport)
+
+    def models(self, recipe):
+        return {name: self for name in recipe.settings.models}
 
 
 def response(stage, value=None):
@@ -45,7 +53,7 @@ def response(stage, value=None):
             if stage.endswith("generate")
             else {"acceptable": True, "reason": "Facts and requested tone preserved."}
         )
-    return AIMessage(
-        content=json.dumps(value),
-        usage_metadata={"input_tokens": 10, "output_tokens": 5, "total_tokens": 15},
-    )
+    return {
+        "raw": json.dumps(value),
+        "usage": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15},
+    }

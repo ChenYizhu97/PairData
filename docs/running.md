@@ -1,6 +1,6 @@
 # 配置与运行
 
-**中文** | [English](running.en.md) · [首页](../README.md)
+**中文** | [English](running.en.md) · [首页](../README.zh-CN.md)
 
 在项目根目录运行时，默认读取 `recipes/rewrite/recipe.yaml`；复杂示例位于 `examples/prompt_pairs/`，通过 `--recipe` 选择。复制整个 recipe 目录后修改文件即可定义新任务。`check` 验证固定配置、sampler、模板变量、Schema 与规则结构，不调用模型；它不验证服务凭据，也不能提前判断所有运行时数据路径。
 

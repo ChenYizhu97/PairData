@@ -3,10 +3,12 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Generic, TypeVar
 
 from pairdata.config import (
     CallSettings,
     ConfigurationError,
+    GenerateSettings,
     RecipeSettings,
     StageSettings,
     load_settings,
@@ -17,10 +19,12 @@ from pairdata.rules import Rule
 from pairdata.sampler import SamplerSettings
 from pairdata.validation import SchemaValidator
 
+CallConfig = TypeVar("CallConfig", bound=CallSettings)
+
 
 @dataclass
-class CompiledCall:
-    settings: CallSettings
+class CompiledCall(Generic[CallConfig]):
+    settings: CallConfig
     renderer: PromptRenderer
     validator: SchemaValidator
 
@@ -29,8 +33,8 @@ class CompiledCall:
 class CompiledStage:
     settings: StageSettings
     sampler: SamplerSettings
-    generate: CompiledCall
-    evaluate: CompiledCall
+    generate: CompiledCall[GenerateSettings]
+    evaluate: CompiledCall[CallSettings]
     decision: Rule
 
 

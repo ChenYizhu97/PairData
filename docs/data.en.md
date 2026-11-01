@@ -1,6 +1,6 @@
 # Data contracts and audit
 
-[中文](data.md) | **English** · [Home](../README.en.md)
+[中文](data.md) | **English** · [Home](../README.md)
 
 Each data.jsonl row contains exactly source and target:
 
@@ -40,3 +40,5 @@ Decisions contain passed, reasons and checks. Checks record paths, operators, ac
 Audit appends flush/fsync. File replacement uses temporary files, fsync, atomic rename and directory fsync. Atomicity is per file; derived exports rebuild on resume.
 
 Credential values come from environment variables and are excluded from snapshots and fingerprints. Audit retains business content for traceability.
+
+Internally, audit events use `task_id`, `operation` and `request_attempt`. On disk these retain the existing names `sample_id`, `stage` and `technical_attempt` through serialization aliases, so existing audit logs remain readable.

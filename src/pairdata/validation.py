@@ -7,6 +7,11 @@ from jsonschema.exceptions import SchemaError, ValidationError
 
 from pairdata.bindings import lookup, path_parts
 from pairdata.config import ConfigurationError
+from pairdata.schemas import ModelResponse
+
+
+class ResponseValidationError(ValueError):
+    """A model response is malformed or violates the recipe's response contract."""
 
 
 class SchemaValidator:
@@ -65,7 +70,7 @@ class SchemaValidator:
                         )
                     current = properties.get(part, {})
 
-    def parse(self, data: dict):
+    def parse(self, data: ModelResponse) -> dict:
         try:
             result = data.get("parsed")
             if result is None:
@@ -78,6 +83,6 @@ class SchemaValidator:
             return result
         except ValidationError as error:
             path = ".".join(map(str, error.absolute_path)) or "$"
-            raise ValueError(f"response schema at {path}: {error.message}") from error
-        except (TypeError, KeyError) as error:
-            raise ValueError(f"invalid model response: {error}") from error
+            raise ResponseValidationError(f"response schema at {path}: {error.message}") from error
+        except (ValueError, TypeError, KeyError) as error:
+            raise ResponseValidationError(f"invalid model response: {error}") from error

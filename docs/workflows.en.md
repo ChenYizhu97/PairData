@@ -1,6 +1,6 @@
 # Workflow
 
-[中文](workflows.md) | **English** · [Home](../README.en.md)
+[中文](workflows.md) | **English** · [Home](../README.md)
 
 The fixed graph lives in [pipeline.py](../src/pairdata/workflows/pipeline.py), alongside its state, nodes, routes and builder. Recipes configure behavior; code defines the topology.
 
@@ -49,3 +49,7 @@ Recovery replays uncommitted tasks from the graph entry, without graph checkpoin
 Sampling is recorded once per task/stage and checked for consistency on replay. Both accepted and rejected committed tasks are skipped. Exports rebuild in task order. Decisions are not duplicated on replay.
 
 A directory lock prevents concurrent writers. Task and recipe snapshots are digest-checked. Complete invalid audit lines block resume; only an incomplete final append without a newline is discarded.
+
+Worker count also equals concurrency. A task retains its worker during backoff even though it releases the request semaphore; queued tasks wait when all workers are occupied.
+
+Response parsing and schema failures use `ResponseValidationError`. Ordinary local `ValueError` and storage failures are not treated as retryable model output. If execution fails, failures while exporting or rendering the preview are attached to the original exception instead of replacing it.

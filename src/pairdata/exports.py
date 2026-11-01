@@ -9,14 +9,14 @@ from pairdata.storage import RunStore, atomic_writer, encode_json
 def run_statistics(store: RunStore):
     results = list(store.results())
     statuses = Counter(result.status for result in results)
-    requests = [event for event in store.events if event["event"] == "request"]
+    requests = [event for event in store.iter_events() if event.event == "request"]
     usage = Counter()
-    for event in store.events:
-        if event["event"] == "response":
+    for event in store.iter_events():
+        if event.event == "response":
             usage.update(
                 {
                     key: value
-                    for key, value in event["data"].get("usage", {}).items()
+                    for key, value in event.data.get("usage", {}).items()
                     if type(value) is int
                 }
             )
@@ -24,18 +24,18 @@ def run_statistics(store: RunStore):
     exported = {result.id for result in results if result.status == "passed"}
     for stage in ("source", "target"):
         samples = {
-            event["sample_id"]: event["data"]["sample"]
-            for event in store.events
-            if event["event"] == "sample" and event["stage"] == f"{stage}.sample"
+            event.task_id: event.data["sample"]
+            for event in store.iter_events()
+            if event.event == "sample" and event.operation == f"{stage}.sample"
         }
         accepted = {
-            event["sample_id"]
-            for event in store.events
-            if event["event"] == "quality_decision"
-            and event["stage"] == f"{stage}.gate"
-            and event["data"]["passed"]
+            event.task_id
+            for event in store.iter_events()
+            if event.event == "quality_decision"
+            and event.operation == f"{stage}.gate"
+            and event.data["passed"]
         }
-        fields = store.manifest["config"][stage]["sampler"]
+        fields = store.sampler_fields(stage)
 
         def distribution(ids):
             return {
@@ -50,25 +50,25 @@ def run_statistics(store: RunStore):
 
         distributions[stage] = {
             "sampled_tasks": len(samples),
-            "not_reached": store.manifest["planned"] - len(samples),
+            "not_reached": store.planned_tasks - len(samples),
             "sampled": distribution(samples),
             "stage_passed": distribution(accepted & samples.keys()),
             "exported": distribution(exported & samples.keys()),
         }
-    generations = [event for event in requests if event["stage"].endswith(".generate")]
+    generations = [event for event in requests if event.operation.endswith(".generate")]
     return {
-        "planned": store.manifest["planned"],
+        "planned": store.planned_tasks,
         "passed": statuses["passed"],
         "rejected": statuses["rejected"],
-        "pending": store.manifest["planned"] - len(results),
+        "pending": store.planned_tasks - len(results),
         "rejection_reasons": dict(
             Counter(result.reason for result in results if result.status == "rejected")
         ),
         "requests": len(requests),
-        "technical_retries": sum(event["technical_attempt"] > 1 for event in requests),
-        "logical_generations": len({event["logical_call_id"] for event in generations}),
+        "technical_retries": sum(event.request_attempt > 1 for event in requests),
+        "logical_generations": len({event.logical_call_id for event in generations}),
         "quality_retries": len(
-            {event["logical_call_id"] for event in generations if event["generation_attempt"] > 1}
+            {event.logical_call_id for event in generations if event.generation_attempt > 1}
         ),
         "token_usage": dict(usage),
         "distributions": distributions,
@@ -104,6 +104,5 @@ def export_run(store: RunStore, status: str):
                 + "\n"
             )
     statistics = run_statistics(store)
-    store.manifest["statistics"] = statistics
-    store.set_status(status)
+    store.set_status(status, statistics=statistics)
     return statistics

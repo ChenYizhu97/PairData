@@ -107,14 +107,14 @@ def write_page(path, records, title, scope, navigation):
 
 def preview_records(store: RunStore):
     calls = defaultdict(list)
-    for event in store.events:
-        if event["event"] in {"request", "quality_decision", "technical_failure", "fatal"}:
-            calls[event["sample_id"]].append(
+    for event in store.iter_events():
+        if event.event in {"request", "quality_decision", "technical_failure", "fatal"}:
+            calls[event.task_id].append(
                 {
-                    key: event[key]
-                    for key in ("stage", "generation_attempt", "technical_attempt", "event")
+                    key: getattr(event, key)
+                    for key in ("operation", "generation_attempt", "request_attempt", "event")
                 }
-                | ({"reason": event["data"]["reason"]} if "reason" in event["data"] else {})
+                | ({"reason": event.data["reason"]} if "reason" in event.data else {})
             )
     for result in store.results():
         yield {**result.model_dump(), "calls": calls[result.id]}
@@ -122,7 +122,7 @@ def preview_records(store: RunStore):
 
 def write_preview(store: RunStore, page_size: int):
     total = sum(1 for _ in store.results())
-    title = store.manifest["config"]["name"]
+    title = store.recipe_name
     records = preview_records(store)
     if total <= page_size:
         write_page(

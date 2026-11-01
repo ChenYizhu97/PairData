@@ -3,10 +3,18 @@
 import asyncio
 import random
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from pairdata.config import ConfigurationError
+from pairdata.schemas import (
+    ModelResponse,
+    OperationEvent,
+    OperationMetadata,
+    OperationName,
+    StageName,
+)
 from pairdata.storage import RunStore, content_digest
+from pairdata.validation import ResponseValidationError
 
 
 @dataclass
@@ -17,6 +25,7 @@ class ExecutionContext:
     slots: asyncio.Semaphore
     retry_initial: float = 1.0
     retry_max: float = 30.0
+    seed: int = 42
 
 
 class ExecutionFailed(Exception):
@@ -25,65 +34,64 @@ class ExecutionFailed(Exception):
 
 def operation_metadata(
     task_id: str,
-    stage: str,
+    stage: StageName,
+    operation: OperationName,
     *,
     model: str = "",
     generation_attempt: int = 0,
-) -> dict:
-    return {
-        "sample_id": task_id,
-        "stage": stage,
-        "generation_attempt": generation_attempt,
-        "logical_call_id": content_digest([task_id, stage, generation_attempt]),
-        "model": model,
-    }
+) -> OperationMetadata:
+    operation_path = f"{stage}.{operation}"
+    return OperationMetadata(
+        task_id=task_id,
+        operation=operation_path,
+        logical_call_id=content_digest([task_id, operation_path, generation_attempt]),
+        generation_attempt=generation_attempt,
+        model=model,
+    )
 
 
 def _restore_operation(
     store: RunStore,
-    history: list[dict],
-    metadata: dict,
+    history: tuple[OperationEvent, ...],
+    metadata: OperationMetadata,
     payload_hash: str,
-    parse: Callable[[dict], dict],
-    retry_if: Callable[[Exception], bool],
+    parse: Callable[[ModelResponse], dict],
 ) -> tuple[dict | None, int]:
     """Restore a validated response and the number of attempts already used."""
     attempts_used = 0
     for event in history:
-        if event["event"] == "request":
-            if event["data"].get("payload_hash") != payload_hash:
+        if event.event == "request":
+            if event.data.get("payload_hash") != payload_hash:
                 raise ConfigurationError("replayed operation inputs differ from saved inputs")
-            attempts_used = max(attempts_used, event["technical_attempt"])
+            attempts_used = max(attempts_used, event.request_attempt)
     for event in history:
-        if event["event"] == "success":
-            return parse(event["data"]), attempts_used
+        if event.event == "success":
+            return parse(event.data), attempts_used
     # If interrupted after saving output, validate it and append the missing success event.
     for event in reversed(history):
-        if event["event"] != "response":
+        if event.event != "response":
             continue
         try:
-            result = parse(event["data"])
-        except Exception as error:
-            if not retry_if(error):
-                raise
+            result = parse(event.data)
+        except ResponseValidationError:
             break
         store.append_event(
-            **metadata,
+            **asdict(metadata),
             event="success",
-            technical_attempt=event["technical_attempt"],
-            data=event["data"],
+            request_attempt=event.request_attempt,
+            data=event.data,
         )
         return result, attempts_used
     return None, attempts_used
 
 
 async def execute(
-    operation: Callable[[], Awaitable[dict]],
+    operation: Callable[[], Awaitable[ModelResponse]],
     *,
     context: ExecutionContext,
-    metadata: dict,
+    metadata: OperationMetadata,
     payload: dict,
-    parse: Callable[[dict], dict],
+    parse: Callable[[ModelResponse], dict],
     retry_if: Callable[[Exception], bool],
     max_attempts: int,
     describe_error: Callable[[Exception], str] = str,
@@ -93,17 +101,15 @@ async def execute(
         raise ValueError("max_attempts must be positive")
     store = context.store
     payload_hash = content_digest(payload)
-    history = store.operation_events.get(metadata["logical_call_id"], [])
-    saved_output, attempts_used = _restore_operation(
-        store, history, metadata, payload_hash, parse, retry_if
-    )
+    history = store.operation_history(metadata.logical_call_id)
+    saved_output, attempts_used = _restore_operation(store, history, metadata, payload_hash, parse)
     if saved_output is not None:
         return saved_output
     if attempts_used >= max_attempts:
-        raise ExecutionFailed(f"{metadata['stage']}: technical attempt budget exhausted")
+        raise ExecutionFailed(f"{metadata.operation}: technical attempt budget exhausted")
 
     for attempt in range(attempts_used + 1, max_attempts + 1):
-        fields = {**metadata, "technical_attempt": attempt}
+        fields = {**asdict(metadata), "request_attempt": attempt}
         async with context.slots:
             # Persist the attempt before execution; cancellations and unknown outcomes consume it.
             store.append_event(
@@ -111,25 +117,32 @@ async def execute(
                 event="request",
                 data={"payload_hash": payload_hash, "input": payload},
             )
+            failure: Exception
             try:
                 output = await operation()
-                store.append_event(**fields, event="response", data=output)
-                result = parse(output)
             except Exception as error:
-                reason = describe_error(error)
-                retryable = retry_if(error)
-                store.append_event(
-                    **fields,
-                    event="technical_failure" if retryable else "fatal",
-                    data={"reason": reason},
-                )
-                if not retryable:
-                    raise
+                failure = error
             else:
-                store.append_event(**fields, event="success", data=output)
-                return result
+                store.append_event(**fields, event="response", data=output)
+                try:
+                    result = parse(output)
+                except ResponseValidationError as error:
+                    failure = error
+                else:
+                    store.append_event(**fields, event="success", data=output)
+                    return result
+
+            reason = describe_error(failure)
+            retryable = isinstance(failure, ResponseValidationError) or retry_if(failure)
+            store.append_event(
+                **fields,
+                event="technical_failure" if retryable else "fatal",
+                data={"reason": reason},
+            )
+            if not retryable:
+                raise failure
         if attempt == max_attempts:
-            raise ExecutionFailed(f"{metadata['stage']}: {reason}") from None
+            raise ExecutionFailed(f"{metadata.operation}: {reason}") from None
         delay = min(
             context.retry_max,
             context.retry_initial * 2 ** (attempt - 1) + random.uniform(0, context.retry_initial),

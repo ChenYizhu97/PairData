@@ -2,7 +2,7 @@ import asyncio
 import json
 import unittest
 from functools import partial
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 import openai
@@ -33,6 +33,45 @@ class ExecutionTest(RecipeFixture, unittest.IsolatedAsyncioTestCase):
         )
         self.context.store = self.store
 
+    async def test_local_value_error_is_not_retried(self):
+        operation = AsyncMock(side_effect=ValueError("invalid local option"))
+        with self.assertRaisesRegex(ValueError, "invalid local option"):
+            await execute(
+                operation,
+                context=self.context,
+                metadata=operation_metadata("local", "source", "generate"),
+                payload={},
+                parse=self.recipe.stages["source"].generate.validator.parse,
+                retry_if=LLMModel.is_retryable,
+                max_attempts=5,
+            )
+        operation.assert_awaited_once()
+        self.assertEqual(list(self.store.iter_events())[-1].event, "fatal")
+
+    async def test_storage_failure_bypasses_retry_policy(self):
+        operation = AsyncMock(return_value={"raw": '{"text":"Saved"}'})
+        retry_if = Mock(return_value=True)
+        append = self.store.append_event
+
+        def fail_on_response(**fields):
+            if fields["event"] == "response":
+                raise OSError("disk full")
+            append(**fields)
+
+        with patch.object(self.store, "append_event", side_effect=fail_on_response):
+            with self.assertRaisesRegex(OSError, "disk full"):
+                await execute(
+                    operation,
+                    context=self.context,
+                    metadata=operation_metadata("disk", "source", "generate"),
+                    payload={},
+                    parse=self.recipe.stages["source"].generate.validator.parse,
+                    retry_if=retry_if,
+                    max_attempts=5,
+                )
+        operation.assert_awaited_once()
+        retry_if.assert_not_called()
+
     async def test_schema_retry_raw_recovery_and_unknown_request_budget(self):
         operation = AsyncMock(side_effect=[{"raw": "bad JSON"}, {"raw": '{"text":"Saved"}'}])
 
@@ -40,7 +79,7 @@ class ExecutionTest(RecipeFixture, unittest.IsolatedAsyncioTestCase):
             return await execute(
                 operation,
                 context=self.context,
-                metadata=operation_metadata(task_id, "source.generate"),
+                metadata=operation_metadata(task_id, "source", "generate"),
                 payload=payload or {},
                 parse=self.recipe.stages["source"].generate.validator.parse,
                 retry_if=LLMModel.is_retryable,
@@ -51,13 +90,17 @@ class ExecutionTest(RecipeFixture, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(operation.await_count, 2)
         self.assertTrue(
             any(
-                event["event"] == "response" and event["data"].get("raw") == "bad JSON"
-                for event in self.store.events
+                event.event == "response" and event.data.get("raw") == "bad JSON"
+                for event in list(self.store.iter_events())
             )
         )
         write_jsonl(
             self.store.directory / "audit.jsonl",
-            [event for event in self.store.events if event["event"] != "success"],
+            [
+                event.model_dump(by_alias=True)
+                for event in self.store.iter_events()
+                if event.event != "success"
+            ],
         )
         self.resume()
         operation.reset_mock()
@@ -96,12 +139,14 @@ class ExecutionTest(RecipeFixture, unittest.IsolatedAsyncioTestCase):
             await execute(
                 partial(model.invoke, [], validator.schema),
                 context=self.context,
-                metadata=operation_metadata("auth", "source.generate"),
+                metadata=operation_metadata("auth", "source", "generate"),
                 payload={},
                 parse=validator.parse,
                 retry_if=model.is_retryable,
                 describe_error=model.error_text,
                 max_attempts=5,
             )
-        self.assertNotIn("test-secret", json.dumps(self.store.events))
-        self.assertEqual(self.store.events[-1]["event"], "fatal")
+        self.assertNotIn(
+            "test-secret", json.dumps([event.model_dump() for event in self.store.iter_events()])
+        )
+        self.assertEqual(list(self.store.iter_events())[-1].event, "fatal")

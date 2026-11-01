@@ -1,5 +1,6 @@
 """Fixed Source → Evaluate → Gate → Target → Evaluate → Gate workflow."""
 
+from collections.abc import Mapping
 from functools import partial
 from typing import TypedDict
 
@@ -7,10 +8,11 @@ from langgraph.graph import END, START, StateGraph
 
 from pairdata.bindings import lookup
 from pairdata.execution import ExecutionContext, ExecutionFailed, execute, operation_metadata
+from pairdata.model import ModelClient
 from pairdata.recipe import Recipe
 from pairdata.rules import evaluate_rule
 from pairdata.sampler import sample_fields
-from pairdata.schemas import StageResult, TaskResult
+from pairdata.schemas import CallName, StageName, StageResult, TaskResult
 
 
 class PipelineInput(TypedDict):
@@ -29,28 +31,37 @@ class PipelineOutput(TypedDict):
     result: TaskResult
 
 
-async def initialize(state):
+async def initialize(state: PipelineInput) -> dict:
     return {"source": StageResult(), "target": None, "failure_reason": None}
 
 
-async def sample_stage(state, *, stage, recipe, execution):
+async def sample_stage(
+    state: PipelineState, *, stage: StageName, recipe: Recipe, execution: ExecutionContext
+) -> dict:
     fields = recipe.stages[stage].sampler.root
-    sample = sample_fields(
-        fields, execution.store.manifest["request"]["seed"], state["index"], stage
-    )
-    metadata = operation_metadata(state["task_id"], f"{stage}.sample")
+    sample = sample_fields(fields, execution.seed, state["index"], stage)
+    metadata = operation_metadata(state["task_id"], stage, "sample")
     return {stage: StageResult(sample=execution.store.record_sample(metadata, sample))}
 
 
 async def call_model(
-    state, stage, operation, context, generation_attempt, *, recipe, models, execution
-):
+    state: PipelineState,
+    stage: StageName,
+    operation: CallName,
+    context: dict,
+    generation_attempt: int,
+    *,
+    recipe: Recipe,
+    models: Mapping[str, ModelClient],
+    execution: ExecutionContext,
+) -> dict:
     call = getattr(recipe.stages[stage], operation)
     model = models[call.settings.model]
     inputs, messages = call.renderer.render(context, call.validator.schema)
     metadata = operation_metadata(
         state["task_id"],
-        f"{stage}.{operation}",
+        stage,
+        operation,
         model=model.name,
         generation_attempt=generation_attempt,
     )
@@ -66,7 +77,14 @@ async def call_model(
     )
 
 
-async def generate(state, *, stage, recipe, models, execution):
+async def generate(
+    state: PipelineState,
+    *,
+    stage: StageName,
+    recipe: Recipe,
+    models: Mapping[str, ModelClient],
+    execution: ExecutionContext,
+) -> dict:
     previous = state[stage]
     assert previous is not None
     context = {
@@ -105,7 +123,7 @@ async def generate(state, *, stage, recipe, models, execution):
     return {stage: current}
 
 
-def evaluation_context(state, stage):
+def evaluation_context(state: PipelineState, stage: StageName) -> dict:
     current = state[stage]
     context = {
         "sample": current.sample,
@@ -117,7 +135,14 @@ def evaluation_context(state, stage):
     return context
 
 
-async def evaluate(state, *, stage, recipe, models, execution):
+async def evaluate(
+    state: PipelineState,
+    *,
+    stage: StageName,
+    recipe: Recipe,
+    models: Mapping[str, ModelClient],
+    execution: ExecutionContext,
+) -> dict:
     current = state[stage].model_copy(deep=True)
     try:
         current.evaluation = await call_model(
@@ -137,12 +162,14 @@ async def evaluate(state, *, stage, recipe, models, execution):
     return {stage: current}
 
 
-async def gate(state, *, stage, recipe, execution):
+async def gate(
+    state: PipelineState, *, stage: StageName, recipe: Recipe, execution: ExecutionContext
+) -> dict:
     current = state[stage].model_copy(deep=True)
     context = {**evaluation_context(state, stage), "evaluation": current.evaluation}
     current.decision = evaluate_rule(recipe.stages[stage].decision, context)
     metadata = operation_metadata(
-        state["task_id"], f"{stage}.gate", generation_attempt=current.generation_attempt
+        state["task_id"], stage, "gate", generation_attempt=current.generation_attempt
     )
     execution.store.record_decision(metadata, current.decision)
     current.status = "passed" if current.decision.passed else "quality_failed"
@@ -157,11 +184,11 @@ async def gate(state, *, stage, recipe, execution):
     }
 
 
-async def after_call(state, *, next_node):
+async def after_call(state: PipelineState, *, next_node: str) -> str:
     return "reject" if state["failure_reason"] else next_node
 
 
-async def after_gate(state, *, stage):
+async def after_gate(state: PipelineState, *, stage: StageName) -> str:
     if state["failure_reason"]:
         return "reject"
     if state[stage].status == "passed":
@@ -169,7 +196,7 @@ async def after_gate(state, *, stage):
     return f"{stage}_generate"
 
 
-async def finish(state, *, passed):
+async def finish(state: PipelineState, *, passed: bool) -> PipelineOutput:
     return {
         "result": TaskResult(
             id=state["task_id"],
@@ -181,7 +208,7 @@ async def finish(state, *, passed):
     }
 
 
-def build_pipeline(recipe: Recipe, models: dict, execution: ExecutionContext):
+def build_pipeline(recipe: Recipe, models: Mapping[str, ModelClient], execution: ExecutionContext):
     # Async entry points keep state changes and store writes on this event loop.
     graph = StateGraph(PipelineState, input_schema=PipelineInput, output_schema=PipelineOutput)
     graph.add_node("initialize", initialize)
@@ -192,13 +219,16 @@ def build_pipeline(recipe: Recipe, models: dict, execution: ExecutionContext):
         graph.add_node(f"{stage}_evaluate", partial(evaluate, models=models, **shared))
         graph.add_node(f"{stage}_gate", partial(gate, **shared))
         graph.add_edge(f"{stage}_sample", f"{stage}_generate")
-        for operation, following in (("generate", "evaluate"), ("evaluate", "gate")):
-            destination = f"{stage}_{following}"
-            graph.add_conditional_edges(
-                f"{stage}_{operation}",
-                partial(after_call, next_node=destination),
-                [destination, "reject"],
-            )
+        graph.add_conditional_edges(
+            f"{stage}_generate",
+            partial(after_call, next_node=f"{stage}_evaluate"),
+            [f"{stage}_evaluate", "reject"],
+        )
+        graph.add_conditional_edges(
+            f"{stage}_evaluate",
+            partial(after_call, next_node=f"{stage}_gate"),
+            [f"{stage}_gate", "reject"],
+        )
         success = "target_sample" if stage == "source" else "accept"
         graph.add_conditional_edges(
             f"{stage}_gate",
